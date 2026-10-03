@@ -1,3 +1,4 @@
-Connected to MySQL/MariaDB database: catchat_db
-catchat backend running on http://localhost:3000
+Could not connect to MySQL (connect ENOENT /home/bharath/catbot/data/mysql.sock), falling back to file storage.
+catchat backend listening on unix socket: /home/bharath/catbot/data/backend.sock
+catchat backend listening on http://localhost:3001
 Users can store their Gemini API key in MySQL via the UI modal.

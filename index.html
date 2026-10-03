@@ -1214,17 +1214,24 @@
                 aria-expanded="false"
               >
                 <span class="model-dot"></span
-                ><span id="modelName">Gemini 2.0 Flash</span
+                ><span id="modelName">Gemini 3.5 Flash</span
                 ><i data-lucide="chevron-down" width="13" height="13"></i>
               </button>
               <div class="model-menu" id="modelMenu" hidden>
                 <button
                   class="model-option selected"
-                  data-model="gemini-2.0-flash"
-                  data-display="Gemini 2.0 Flash"
+                  data-model="gemini-3.5-flash"
+                  data-display="Gemini 3.5 Flash"
                 >
-                  Gemini 2.0 Flash
+                  Gemini 3.5 Flash
                   <i data-lucide="check" width="13" height="13"></i>
+                </button>
+                <button
+                  class="model-option"
+                  data-model="gemini-3.5-flash-lite"
+                  data-display="Gemini 3.5 Flash Lite"
+                >
+                  Gemini 3.5 Flash Lite
                 </button>
                 <button
                   class="model-option"
@@ -1242,10 +1249,17 @@
                 </button>
                 <button
                   class="model-option"
-                  data-model="gemini-2.0-flash-lite"
-                  data-display="Gemini 2.0 Flash Lite"
+                  data-model="llama-3.3-70b-versatile"
+                  data-display="Groq · Llama 3.3 70B"
                 >
-                  Gemini 2.0 Flash Lite
+                  Groq · Llama 3.3 70B
+                </button>
+                <button
+                  class="model-option"
+                  data-model="command-r"
+                  data-display="Cohere · Command R"
+                >
+                  Cohere · Command R
                 </button>
               </div>
             </div>
@@ -1415,7 +1429,7 @@
             </div>
             <div>
               <h3 class="modal-title">Gemini API Key</h3>
-              <p class="modal-subtitle">Stored locally in your browser</p>
+              <p class="modal-subtitle">Stored securely in MySQL database</p>
             </div>
           </div>
           <button class="modal-close" id="closeApiKeyModal" aria-label="Close dialog">
@@ -1423,19 +1437,23 @@
           </button>
         </div>
         <div class="modal-body">
+          <div id="defaultKeyBadge" style="display:none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.25); color: #86efac; font-size: 13px; line-height: 1.4;">
+            <div style="font-weight: 600; margin-bottom: 2px;">✓ Default System API Key Active</div>
+            <div id="defaultKeyBadgeDesc" style="opacity: 0.85; font-size: 12px;">You can start chatting immediately. Enter a custom key below if you wish to override it.</div>
+          </div>
           <label class="modal-label" for="apiKeyInput">Your Google AI Studio API Key</label>
           <input
             type="password"
             id="apiKeyInput"
             class="modal-input"
-            placeholder="AIzaSy..."
+            placeholder="AIzaSy... or AQ.Ab8..."
             autocomplete="off"
             spellcheck="false"
           />
           <p class="modal-help">
             Get a free key at
             <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.
-            Your key stays in your browser's local storage and is sent directly to Google's API.
+            Your key is stored securely in the MySQL database and used to power your chat.
           </p>
         </div>
         <div class="modal-footer">
@@ -1459,8 +1477,8 @@
       let toastTimer;
 
       // Gemini State & Configuration
-      let selectedModel = "gemini-3.8-flash";
-      let selectedModelDisplay = "Gemini 3.8 Flash";
+      let selectedModel = "gemini-3.5-flash";
+      let selectedModelDisplay = "Gemini 3.5 Flash";
       let pendingAttachment = null; // { base64, mimeType, dataUrl, name }
 
       const API_KEY_STORAGE = "catchat_gemini_api_key";
@@ -1522,12 +1540,22 @@
             headers: { "x-client-id": getClientId() }
           });
           const data = await res.json();
+          const btn = document.getElementById("apiKeyButton");
+          const label = document.getElementById("apiKeyButtonLabel");
+          const badge = document.getElementById("defaultKeyBadge");
+          const badgeDesc = document.getElementById("defaultKeyBadgeDesc");
           if (data && data.hasKey) {
-            const btn = document.getElementById("apiKeyButton");
-            const label = document.getElementById("apiKeyButtonLabel");
             if (btn && label) {
               btn.classList.add("has-key");
-              label.textContent = "DB Key ✓";
+              label.textContent = data.isDefault ? "Default Key ✓" : "Custom Key ✓";
+            }
+            if (badge) {
+              badge.style.display = "block";
+              if (!data.isDefault) {
+                badge.innerHTML = `<div style="font-weight: 600; margin-bottom: 2px;">✓ Personal Key Active (${data.masked || '••••'})</div><div style="opacity: 0.85; font-size: 12px;">Your personal API key is stored in MySQL and currently active.</div>`;
+              } else if (badgeDesc) {
+                badgeDesc.textContent = `A default system key (${data.masked || '••••'}) is active. You can chat immediately or enter your personal key below to override it.`;
+              }
             }
           }
         } catch {}
@@ -1631,7 +1659,7 @@
         icons();
       }
 
-      function addMessage(role, text, html, attachmentDataUrl) {
+      function addMessage(role, text, html, attachmentDataUrl, metaBadge = "") {
         const message = document.createElement("article");
         message.className = "message " + role;
         if (role === "assistant") {
@@ -1646,7 +1674,7 @@
         const meta = document.createElement("div");
         meta.className = "message-meta";
         meta.textContent =
-          role === "user" ? "You · just now" : `catchat · ${selectedModelDisplay}`;
+          role === "user" ? "You · just now" : `catchat · ${selectedModelDisplay}${metaBadge}`;
         const content = document.createElement("div");
         content.className =
           role === "assistant"
@@ -1706,9 +1734,6 @@
       // Google Gemini API call
       async function callGemini(userText, attachment) {
         const apiKey = getApiKey();
-        if (!apiKey) {
-          throw new Error("NO_API_KEY");
-        }
 
         // Prepare conversation history
         const contents = [];
@@ -1759,9 +1784,11 @@
           parts: currentParts
         });
 
-        // Map any deprecated models to gemini-3.8-flash automatically
+        // Map any deprecated models to gemini-3.5-flash automatically
         const MODEL_ALIASES = {
-          "gemini-2.5-flash": "gemini-3.8-flash",
+          "gemini-2.0-flash": "gemini-3.5-flash",
+          "gemini-2.0-flash-lite": "gemini-3.5-flash-lite",
+          "gemini-2.5-flash": "gemini-3.5-flash",
           "gemini-2.5-pro": "gemini-3.8-pro",
         };
         const activeModel = MODEL_ALIASES[selectedModel] || selectedModel;
@@ -1779,7 +1806,16 @@
           });
           const data = await res.json();
           if (res.ok && data.text) {
-            return data.text;
+            if (data.switched && data.switchReason) {
+              showToast("⚡ " + data.switchReason);
+            }
+            return {
+              text: data.text,
+              usedModel: data.usedModel,
+              provider: data.provider,
+              switched: data.switched,
+              switchReason: data.switchReason,
+            };
           }
           if (data.error && data.error.code === "NO_API_KEY") {
             throw new Error("NO_API_KEY");
@@ -1853,15 +1889,22 @@
         closeSidebar();
 
         try {
-          const rawReply = await callGemini(messageText, currentAttachment);
+          const replyObj = await callGemini(messageText, currentAttachment);
           typing.remove();
+          const rawReply = typeof replyObj === "string" ? replyObj : (replyObj?.text || "");
           const parsedHtml = window.marked ? marked.parse(rawReply) : `<p>${rawReply}</p>`;
           activeSession.messages.push({
             role: "assistant",
             rawText: rawReply,
-            html: parsedHtml
+            html: parsedHtml,
+            provider: replyObj?.provider,
+            usedModel: replyObj?.usedModel,
+            switched: replyObj?.switched,
           });
-          addMessage("assistant", "", parsedHtml);
+          const metaBadge = replyObj?.switched
+            ? ` (⚡ Auto-switched: ${replyObj.provider || replyObj.usedModel})`
+            : "";
+          addMessage("assistant", "", parsedHtml, null, metaBadge);
         } catch (err) {
           typing.remove();
           if (err.message === "NO_API_KEY") {

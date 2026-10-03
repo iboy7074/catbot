@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  # MySQL / MariaDB database service
+  db:
+    image: mariadb:11.4
+    container_name: catchat-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secret
+      MYSQL_DATABASE: catchat_db
+      MYSQL_USER: catbot
+      MYSQL_PASSWORD: catbot_secret
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./data/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Node.js backend API
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: catchat-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: catbot
+      DB_PASSWORD: catbot_secret
+      DB_NAME: catchat_db
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-AQ.Ab8RN6IAbNehlPWTeAuPMauvihEn6gEZMs0yRPpbwReVDmufWw}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+      HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    ports:
+      - "3001:3001"
+
+  # Nginx reverse proxy & static frontend server
+  web:
+    image: nginx:alpine
+    container_name: catchat-web
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "8085:80"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./brand-curious-cat.webp:/usr/share/nginx/html/brand-curious-cat.webp:ro
+
+  # phpMyAdmin (Web GUI to view and manage the database)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: catchat-phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: catbot
+      PMA_PASSWORD: catbot_secret
+    ports:
+      - "8086:80"
+
+volumes:
+  db_data:
