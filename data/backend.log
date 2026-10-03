@@ -1,0 +1,3 @@
+Connected to MySQL/MariaDB database: catchat_db
+catchat backend running on http://localhost:3000
+Users can store their Gemini API key in MySQL via the UI modal.
