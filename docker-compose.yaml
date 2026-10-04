@@ -7,20 +7,23 @@ services:
     container_name: catchat-db
     restart: unless-stopped
     environment:
+      MARIADB_ROOT_PASSWORD: root_secret
+      MARIADB_DATABASE: catchat_db
+      MARIADB_USER: catbot
+      MARIADB_PASSWORD: catbot_secret
       MYSQL_ROOT_PASSWORD: root_secret
       MYSQL_DATABASE: catchat_db
       MYSQL_USER: catbot
       MYSQL_PASSWORD: catbot_secret
-    ports:
-      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
       - ./data/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u catbot -pcatbot_secret || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 25s
 
   # Node.js backend API
   app:
