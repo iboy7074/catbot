@@ -54,18 +54,15 @@ services:
 
   # Nginx reverse proxy & static frontend server
   web:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
     container_name: catchat-web
     restart: unless-stopped
     depends_on:
       - app
     ports:
       - "8085:80"
-    volumes:
-      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./index.html:/usr/share/nginx/html/index.html:ro
-      - ./admin.html:/usr/share/nginx/html/admin.html:ro
-      - ./brand-curious-cat.webp:/usr/share/nginx/html/brand-curious-cat.webp:ro
 
   # phpMyAdmin (Web GUI to view and manage the database)
   phpmyadmin:
