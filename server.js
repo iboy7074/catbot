@@ -50,7 +50,7 @@ const ALLOWED_MODELS = new Set([
   // Hugging Face
   "meta-llama/Llama-3.2-3B-Instruct",
 ]);
-const SYSTEM_PROMPT =
+let SYSTEM_PROMPT =
   "You are catchat, a helpful, thoughtful, friendly, and intelligent AI assistant. Use markdown formatting where helpful.";
 const MAX_SESSIONS_PER_CLIENT = 100;
 
@@ -172,6 +172,194 @@ function rateLimit(req, res, next) {
   hits.set(req.ip, times);
   next();
 }
+
+/* ---------- Authentication (Signup, Login, JWT HMAC) ---------- */
+const AUTH_SECRET = process.env.AUTH_SECRET || "catchat_super_secure_jwt_secret_2026_key";
+const ID_RE = /^[A-Za-z0-9_-]{3,64}$/;
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(":")) return false;
+  const [salt, hash] = stored.split(":");
+  const testHash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(testHash, "hex"));
+}
+
+function createToken(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(
+    JSON.stringify({ ...payload, exp: Date.now() + 30 * 24 * 60 * 60 * 1000 })
+  ).toString("base64url");
+  const sig = crypto.createHmac("sha256", AUTH_SECRET).update(`${header}.${body}`).digest("base64url");
+  return `${header}.${body}.${sig}`;
+}
+
+function verifyToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [header, body, sig] = parts;
+  const expectedSig = crypto.createHmac("sha256", AUTH_SECRET).update(`${header}.${body}`).digest("base64url");
+  if (sig !== expectedSig) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (payload.exp && Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+function clientId(req, res, next) {
+  // 1. Try bearer / auth token
+  const authHeader = req.get("authorization") || req.get("x-auth-token") || "";
+  let token = "";
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7).trim();
+  } else if (authHeader) {
+    token = authHeader.trim();
+  }
+
+  if (token) {
+    const user = verifyToken(token);
+    if (user && user.userId) {
+      req.user = user;
+      req.clientId = `usr_${user.userId}`;
+      return next();
+    }
+  }
+
+  // 2. Fallback to guest client ID header
+  const id = req.get("x-client-id") || "";
+  if (!ID_RE.test(id)) {
+    return res.status(400).json({ error: { code: "BAD_CLIENT", message: "Missing or invalid client identifier." } });
+  }
+  req.clientId = id;
+  next();
+}
+
+app.post("/api/auth/signup", rateLimit, async (req, res) => {
+  const { username, email, password } = req.body || {};
+  if (!username || typeof username !== "string" || username.trim().length < 3 || username.trim().length > 30) {
+    return res.status(400).json({ error: { code: "BAD_USERNAME", message: "Username must be between 3 and 30 characters." } });
+  }
+  const cleanUsername = username.trim().toLowerCase();
+  if (!/^[a-zA-Z0-9_]+$/.test(cleanUsername)) {
+    return res.status(400).json({ error: { code: "BAD_USERNAME", message: "Username can only contain letters, numbers, and underscores." } });
+  }
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    return res.status(400).json({ error: { code: "BAD_EMAIL", message: "Please provide a valid email address." } });
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  if (!password || typeof password !== "string" || password.length < 6) {
+    return res.status(400).json({ error: { code: "BAD_PASSWORD", message: "Password must be at least 6 characters long." } });
+  }
+
+  if (!pool) {
+    return res.status(503).json({ error: { code: "NO_DATABASE", message: "Database is not connected. User accounts are unavailable." } });
+  }
+
+  try {
+    const [existing] = await pool.query(
+      "SELECT id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1",
+      [cleanUsername, cleanEmail]
+    );
+    if (existing.length > 0) {
+      const match = existing[0];
+      if (match.username.toLowerCase() === cleanUsername) {
+        return res.status(409).json({ error: { code: "USERNAME_TAKEN", message: "Username is already in use. Please choose another." } });
+      }
+      return res.status(409).json({ error: { code: "EMAIL_TAKEN", message: "Email is already registered. Please sign in instead." } });
+    }
+
+    const passwordHash = hashPassword(password);
+    const [result] = await pool.query(
+      "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+      [cleanUsername, cleanEmail, passwordHash]
+    );
+
+    const userId = result.insertId;
+    const userPayload = { userId, username: cleanUsername, email: cleanEmail };
+    const token = createToken(userPayload);
+
+    return res.status(201).json({
+      ok: true,
+      user: { id: userId, username: cleanUsername, email: cleanEmail },
+      token,
+      message: "Account created successfully."
+    });
+  } catch (err) {
+    console.error("Signup error:", err);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Could not create account. Please try again." } });
+  }
+});
+
+app.post("/api/auth/login", rateLimit, async (req, res) => {
+  const { login, password } = req.body || {};
+  if (!login || typeof login !== "string" || !password || typeof password !== "string") {
+    return res.status(400).json({ error: { code: "BAD_REQUEST", message: "Username/email and password are required." } });
+  }
+
+  if (!pool) {
+    return res.status(503).json({ error: { code: "NO_DATABASE", message: "Database is not connected." } });
+  }
+
+  try {
+    const cleanLogin = login.trim().toLowerCase();
+    const [rows] = await pool.query(
+      "SELECT id, username, email, password_hash FROM users WHERE username = ? OR email = ? LIMIT 1",
+      [cleanLogin, cleanLogin]
+    );
+
+    if (rows.length === 0) {
+      return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid username or password." } });
+    }
+
+    const user = rows[0];
+    const passwordValid = verifyPassword(password, user.password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid username or password." } });
+    }
+
+    const userPayload = { userId: user.id, username: user.username, email: user.email };
+    const token = createToken(userPayload);
+
+    return res.json({
+      ok: true,
+      user: { id: user.id, username: user.username, email: user.email },
+      token,
+      message: "Logged in successfully."
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Authentication failed." } });
+  }
+});
+
+app.get("/api/auth/me", clientId, async (req, res) => {
+  if (req.user) {
+    return res.json({
+      ok: true,
+      authenticated: true,
+      user: { id: req.user.userId, username: req.user.username, email: req.user.email },
+      clientId: req.clientId
+    });
+  }
+  return res.json({
+    ok: true,
+    authenticated: false,
+    clientId: req.clientId
+  });
+});
+
+app.post("/api/auth/logout", (_req, res) => {
+  res.json({ ok: true, message: "Logged out." });
+});
 
 /* ---------- Chat proxy ---------- */
 function validContents(contents) {
@@ -361,9 +549,9 @@ async function callHuggingFace(modelName, contents, key) {
   }
 }
 
-app.post("/api/chat", rateLimit, async (req, res) => {
+app.post("/api/chat", rateLimit, clientId, async (req, res) => {
   const { model: requestedModel, contents } = req.body || {};
-  const reqClientId = req.get("x-client-id") || "";
+  const reqClientId = req.clientId || "";
 
   // Auto-remap deprecated/offline models to working Gemini 3.5 Flash / Groq / Cohere
   const MODEL_ALIASES = {
@@ -485,17 +673,6 @@ app.post("/api/chat", rateLimit, async (req, res) => {
 });
 
 /* ---------- User API Key Endpoints (MySQL DB) ---------- */
-const ID_RE = /^[A-Za-z0-9_-]{8,64}$/;
-
-function clientId(req, res, next) {
-  const id = req.get("x-client-id") || "";
-  if (!ID_RE.test(id)) {
-    return res.status(400).json({ error: { code: "BAD_CLIENT", message: "Missing or invalid X-Client-Id." } });
-  }
-  req.clientId = id;
-  next();
-}
-
 app.get("/api/key", clientId, async (req, res) => {
   const isCustom = await hasCustomApiKey(req.clientId);
   const key = await getUserApiKey(req.clientId);
@@ -560,11 +737,12 @@ function persist() {
 }
 
 function sanitizeSession(body) {
-  if (!body || typeof body.title !== "string" || !Array.isArray(body.messages)) return null;
+  if (!body || !Array.isArray(body.messages)) return null;
   if (body.messages.length > 500) return null;
+  const rawTitle = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "New conversation";
   return {
-    title: body.title.slice(0, 120),
-    updatedAt: Date.now(),
+    title: rawTitle.slice(0, 120),
+    updatedAt: Number(body.updatedAt) || Date.now(),
     messages: body.messages.map((m) => ({
       role: m.role === "assistant" ? "assistant" : "user",
       text: typeof m.text === "string" ? m.text.slice(0, 100_000) : "",
@@ -680,6 +858,352 @@ app.delete("/api/sessions/:id", clientId, async (req, res) => {
     await persist();
   }
   res.json({ ok: true });
+});
+
+/* ---------- Live Database & Chatbot Control Admin API (phpMyAdmin-style) ---------- */
+const ADMIN_ALLOWED_TABLES = new Set(["users", "sessions", "messages", "user_keys"]);
+
+// Coolify / Admin Security & Toggle Middleware
+app.use("/api/admin", (req, res, next) => {
+  const enableAdmin = process.env.ENABLE_ADMIN !== "false";
+  if (!enableAdmin) {
+    return res.status(403).json({
+      ok: false,
+      error: "Admin panel is disabled on this server (ENABLE_ADMIN=false).",
+    });
+  }
+  const adminSecret = (process.env.ADMIN_SECRET || "").trim();
+  if (adminSecret) {
+    const providedKey = (req.headers["x-admin-key"] || req.query.admin_key || "").toString().trim();
+    if (providedKey !== adminSecret) {
+      return res.status(401).json({
+        ok: false,
+        error: "Unauthorized: Invalid or missing admin secret key.",
+      });
+    }
+  }
+  next();
+});
+
+app.get("/api/admin/overview", async (_req, res) => {
+  let dbStatus = "disconnected";
+  let stats = {
+    users: 0,
+    sessions: 0,
+    messages: 0,
+    keys: 0,
+    database: "catchat_db",
+    version: "N/A",
+  };
+  let tables = [];
+
+  if (pool) {
+    try {
+      const [[usersCount]] = await pool.query("SELECT COUNT(*) as count FROM users");
+      const [[sessionsCount]] = await pool.query("SELECT COUNT(*) as count FROM sessions");
+      const [[messagesCount]] = await pool.query("SELECT COUNT(*) as count FROM messages");
+      const [[keysCount]] = await pool.query("SELECT COUNT(*) as count FROM user_keys");
+      const [[dbVersion]] = await pool.query("SELECT VERSION() as version");
+
+      dbStatus = "connected";
+      stats = {
+        users: Number(usersCount.count),
+        sessions: Number(sessionsCount.count),
+        messages: Number(messagesCount.count),
+        keys: Number(keysCount.count),
+        database: "catchat_db",
+        version: dbVersion.version,
+      };
+      tables = [
+        { name: "users", count: Number(usersCount.count), desc: "Registered user accounts and credentials" },
+        { name: "sessions", count: Number(sessionsCount.count), desc: "Chat conversations & thread titles" },
+        { name: "messages", count: Number(messagesCount.count), desc: "Full message turns (user & AI prompts/responses)" },
+        { name: "user_keys", count: Number(keysCount.count), desc: "API keys configured per user / default system key" },
+      ];
+    } catch (e) {
+      dbStatus = "error: " + e.message;
+    }
+  }
+
+  const providers = {
+    gemini: { configured: Boolean(SERVER_KEY), name: "Google Gemini", model: "gemini-3.5-flash" },
+    groq: { configured: Boolean(GROQ_API_KEY), name: "Groq Cloud", model: "openai/gpt-oss-120b" },
+    cohere: { configured: Boolean(COHERE_API_KEY), name: "Cohere", model: "command-r-08-2024" },
+    huggingface: { configured: Boolean(HUGGINGFACE_API_KEY), name: "Hugging Face", model: "meta-llama/Llama-3.2-3B-Instruct" },
+    openrouter: { configured: Boolean(OPENROUTER_API_KEY), name: "OpenRouter", model: "auto-failover" },
+  };
+
+  res.json({
+    ok: true,
+    dbStatus,
+    stats,
+    tables,
+    providers,
+    server: {
+      uptimeSeconds: Math.floor(process.uptime()),
+      nodeVersion: process.version,
+      port: PORT,
+      timestamp: Date.now(),
+    },
+  });
+});
+
+app.get("/api/admin/table/:table", async (req, res) => {
+  if (!pool) return res.status(503).json({ error: { message: "Database not connected" } });
+  const tableName = req.params.table;
+  if (!ADMIN_ALLOWED_TABLES.has(tableName)) {
+    return res.status(400).json({ error: { message: "Invalid table name" } });
+  }
+
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(5, Number(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+  const search = (req.query.search || "").trim();
+
+  try {
+    let whereClause = "";
+    const params = [];
+
+    if (search) {
+      if (tableName === "users") {
+        whereClause = "WHERE username LIKE ? OR email LIKE ?";
+        params.push(`%${search}%`, `%${search}%`);
+      } else if (tableName === "sessions") {
+        whereClause = "WHERE title LIKE ? OR client_id LIKE ? OR id LIKE ?";
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      } else if (tableName === "messages") {
+        whereClause = "WHERE text LIKE ? OR session_id LIKE ? OR role LIKE ?";
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      } else if (tableName === "user_keys") {
+        whereClause = "WHERE client_id LIKE ?";
+        params.push(`%${search}%`);
+      }
+    }
+
+    const [[countResult]] = await pool.query(
+      `SELECT COUNT(*) as count FROM ${tableName} ${whereClause}`,
+      params
+    );
+    const total = Number(countResult.count);
+
+    let orderBy = "id DESC";
+    if (tableName === "sessions") orderBy = "updated_at DESC";
+    if (tableName === "user_keys") orderBy = "updated_at DESC";
+
+    let selectCols = "*";
+    if (tableName === "users") {
+      selectCols = "id, username, email, '••••••••' as password_hash, created_at";
+    }
+
+    const [rows, fields] = await pool.query(
+      `SELECT ${selectCols} FROM ${tableName} ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const columns = fields ? fields.map((f) => f.name) : (rows[0] ? Object.keys(rows[0]) : []);
+
+    res.json({
+      ok: true,
+      table: tableName,
+      columns,
+      rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: { message: err.message } });
+  }
+});
+
+app.delete("/api/admin/table/:table/:id", async (req, res) => {
+  if (!pool) return res.status(503).json({ error: { message: "Database not connected" } });
+  const tableName = req.params.table;
+  if (!ADMIN_ALLOWED_TABLES.has(tableName)) {
+    return res.status(400).json({ error: { message: "Invalid table name" } });
+  }
+  const id = req.params.id;
+
+  try {
+    let pkCol = "id";
+    if (tableName === "user_keys") pkCol = "client_id";
+
+    const [result] = await pool.query(`DELETE FROM ${tableName} WHERE ${pkCol} = ?`, [id]);
+    res.json({ ok: true, affectedRows: result.affectedRows });
+  } catch (err) {
+    res.status(500).json({ error: { message: err.message } });
+  }
+});
+
+app.post("/api/admin/query", async (req, res) => {
+  if (!pool) return res.status(503).json({ error: { message: "Database not connected" } });
+  const { sql } = req.body || {};
+  if (!sql || typeof sql !== "string" || !sql.trim()) {
+    return res.status(400).json({ error: { message: "SQL query string is required" } });
+  }
+
+  const trimmed = sql.trim();
+  const startTime = Date.now();
+
+  try {
+    const [result, fields] = await pool.query(trimmed);
+    const duration = Date.now() - startTime;
+
+    if (Array.isArray(result)) {
+      const columns = fields ? fields.map((f) => f.name) : (result[0] ? Object.keys(result[0]) : []);
+      return res.json({
+        ok: true,
+        type: "select",
+        columns,
+        rows: result,
+        rowCount: result.length,
+        durationMs: duration,
+      });
+    }
+
+    res.json({
+      ok: true,
+      type: "mutation",
+      affectedRows: result.affectedRows || 0,
+      insertId: result.insertId || null,
+      warningStatus: result.warningStatus || 0,
+      durationMs: duration,
+    });
+  } catch (err) {
+    res.status(400).json({
+      ok: false,
+      error: { message: err.message, errno: err.errno, sqlState: err.sqlState },
+    });
+  }
+});
+
+app.post("/api/admin/test-ai", async (req, res) => {
+  const { provider } = req.body || {};
+  const testMsg = [{ role: "user", parts: [{ text: "Reply in exactly 3 words: AI Check Passed." }] }];
+
+  try {
+    if (provider === "groq" && GROQ_API_KEY) {
+      const result = await callGroq("openai/gpt-oss-120b", testMsg, GROQ_API_KEY);
+      return res.json(result);
+    }
+    if (provider === "cohere" && COHERE_API_KEY) {
+      const result = await callCohere("command-r-08-2024", testMsg, COHERE_API_KEY);
+      return res.json(result);
+    }
+    if (provider === "openrouter" && OPENROUTER_API_KEY) {
+      const result = await callOpenRouter("google/gemini-2.0-flash-exp:free", testMsg, OPENROUTER_API_KEY);
+      return res.json(result);
+    }
+    const key = (await getUserApiKey("__default__")) || SERVER_KEY;
+    if (key) {
+      const result = await callGemini("gemini-3.5-flash", testMsg, key);
+      return res.json(result);
+    }
+    return res.status(400).json({ ok: false, message: "No API key configured for " + provider });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: e.message });
+  }
+});
+
+app.get("/api/admin/config", async (_req, res) => {
+  const defaultKey = (await getUserApiKey("__default__")) || SERVER_KEY;
+  const maskedKey = defaultKey && defaultKey.length > 8 ? `${defaultKey.slice(0, 4)}...${defaultKey.slice(-4)}` : "Not set";
+
+  res.json({
+    ok: true,
+    systemPrompt: SYSTEM_PROMPT,
+    rateLimit: RATE_LIMIT,
+    defaultKeyMasked: maskedKey,
+    hasDefaultKey: Boolean(defaultKey),
+    groqConfigured: Boolean(GROQ_API_KEY),
+    cohereConfigured: Boolean(COHERE_API_KEY),
+    openRouterConfigured: Boolean(OPENROUTER_API_KEY),
+  });
+});
+
+app.post("/api/admin/config", async (req, res) => {
+  const { systemPrompt, defaultKey } = req.body || {};
+  if (typeof systemPrompt === "string" && systemPrompt.trim()) {
+    SYSTEM_PROMPT = systemPrompt.trim().slice(0, 5000);
+  }
+  if (typeof defaultKey === "string" && defaultKey.trim().length >= 10) {
+    await saveUserApiKey("__default__", defaultKey.trim());
+  }
+  res.json({ ok: true, message: "Chatbot settings updated successfully." });
+});
+
+// 1-Click Database SQL Backup / Export
+app.get("/api/admin/backup", async (_req, res) => {
+  if (!pool) return res.status(503).json({ error: "Database not connected" });
+  try {
+    let sqlDump = `-- catchat_db MariaDB Backup\n-- Generated on: ${new Date().toISOString()}\n\n`;
+
+    const tables = ["users", "user_keys", "sessions", "messages"];
+    for (const table of tables) {
+      sqlDump += `-- --------------------------------------------------------\n-- Table structure and data for table \`${table}\`\n-- --------------------------------------------------------\n`;
+      const [[createRow]] = await pool.query(`SHOW CREATE TABLE \`${table}\``);
+      if (createRow && createRow["Create Table"]) {
+        sqlDump += `DROP TABLE IF EXISTS \`${table}\`;\n${createRow["Create Table"]};\n\n`;
+      }
+
+      const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
+      if (rows && rows.length) {
+        for (const row of rows) {
+          const keys = Object.keys(row).map((k) => `\`${k}\``).join(", ");
+          const vals = Object.values(row).map((v) => {
+            if (v === null || v === undefined) return "NULL";
+            if (typeof v === "number") return v;
+            return `'${String(v).replace(/'/g, "''").replace(/\\/g, "\\\\")}'`;
+          }).join(", ");
+          sqlDump += `INSERT INTO \`${table}\` (${keys}) VALUES (${vals});\n`;
+        }
+        sqlDump += "\n";
+      }
+    }
+
+    const filename = `catchat_backup_${Date.now()}.sql`;
+    res.setHeader("Content-Type", "application/sql");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(sqlDump);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Database Maintenance & Cleanup
+app.post("/api/admin/purge", async (req, res) => {
+  if (!pool) return res.status(503).json({ error: "Database not connected" });
+  const { target } = req.body || {};
+
+  try {
+    if (target === "guest_sessions") {
+      const [res1] = await pool.query("DELETE FROM messages WHERE session_id IN (SELECT id FROM sessions WHERE client_id NOT LIKE 'usr_%')");
+      const [res2] = await pool.query("DELETE FROM sessions WHERE client_id NOT LIKE 'usr_%'");
+      return res.json({ ok: true, message: `Purged guest sessions. Removed ${res2.affectedRows} sessions and ${res1.affectedRows} messages.` });
+    }
+    if (target === "empty_sessions") {
+      const [res1] = await pool.query("DELETE FROM sessions WHERE id NOT IN (SELECT DISTINCT session_id FROM messages)");
+      return res.json({ ok: true, message: `Removed ${res1.affectedRows} empty conversation threads.` });
+    }
+    res.status(400).json({ ok: false, message: "Invalid purge target" });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// Real-time Server Access Logs
+app.get("/api/admin/logs", async (_req, res) => {
+  const logPath = path.join(DATA_DIR, "nginx/logs/access.log");
+  try {
+    const raw = await readFile(logPath, "utf8").catch(() => "");
+    const lines = raw.trim().split("\n").filter(Boolean).slice(-60);
+    res.json({ ok: true, logs: lines });
+  } catch {
+    res.json({ ok: true, logs: ["No logs available yet."] });
+  }
 });
 
 app.get("/api/health", async (_req, res) => {

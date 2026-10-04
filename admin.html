@@ -1,0 +1,1674 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>catchat DB Studio · Live Admin Control</title>
+    <title>catchat DB Studio · Master Control Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link 
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      :root {
+        --bg-main: #f8faf6;
+        --bg-sidebar: #131912;
+        --sidebar-border: #222c21;
+        --text-sidebar: #9aa897;
+        --text-sidebar-active: #ffffff;
+        --surface: #ffffff;
+        --line: #e3e8de;
+        --ink: #1e261d;
+        --muted: #6b7568;
+        --brand: #2b5526;
+        --brand-light: #ebf3e6;
+        --brand-hover: #1e3d1a;
+        --danger: #d9483b;
+        --danger-light: #fbeee9;
+        --accent: #2e7d32;
+        --code-bg: #182017;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      [font-family="JetBrains Mono"] {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      root {
+        --bg-main: #f8faf6;
+        --bg-sidebar: #131912;
+        --sidebar-border: #222c21;
+        --text-sidebar: #9aa897;
+        --text-sidebar-active: #ffffff;
+        --surface: #ffffff;
+        --line: #e3e8de;
+        --ink: #1e261d;
+        --muted: #6b7568;
+        --brand: #2b5526;
+        --brand-light: #ebf3e6;
+        --brand-hover: #1e3d1a;
+        --danger: #d9483b;
+        --danger-light: #fbeee9;
+        --accent: #2e7d32;
+        --code-bg: #182017;
+        font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      }
+      [font-family="JetBrains Mono"] {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg-main);
+        color: var(--ink);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+      }
+      button, input, textarea, select {
+        font-family: inherit;
+      }
+
+      /* Sidebar */
+      .admin-sidebar {
+        width: 260px;
+        flex: 0 0 260px;
+        width: 270px;
+        flex: 0 0 270px;
+        background: var(--bg-sidebar);
+        color: var(--text-sidebar);
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid var(--sidebar-border);
+      }
+      .sidebar-brand {
+        padding: 22px 20px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border-bottom: 1px solid var(--sidebar-border);
+      }
+      .brand-badge {
+        width: 32px;
+        height: 32px;
+        width: 34px;
+        height: 34px;
+        background: #253323;
+        border: 1px solid #374a35;
+        border-radius: 8px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        color: #8ce37d;
+      }
+      .brand-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: #fff;
+        line-height: 1.2;
+      }
+      .brand-sub {
+        font-size: 11px;
+        color: #7b8f78;
+      }
+      .db-status-bar {
+        padding: 12px 20px;
+        padding: 10px 20px;
+        background: #192218;
+        border-bottom: 1px solid var(--sidebar-border);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #8be07d;
+      }
+      .db-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #4ade80;
+        box-shadow: 0 0 8px #4ade80;
+      }
+      .sidebar-nav {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px 12px;
+        padding: 14px 12px;
+      }
+      .nav-group-title {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #637560;
+        padding: 8px 10px 4px;
+        margin-top: 10px;
+      }
+      .nav-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 9px 12px;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        color: var(--text-sidebar);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+        text-align: left;
+        margin-bottom: 3px;
+      }
+      .nav-btn:hover {
+        background: #1f2a1d;
+        color: #e2e8df;
+      }
+      .nav-btn.active {
+        background: #2a3c27;
+        color: #fff;
+        font-weight: 600;
+      }
+      .nav-badge {
+        margin-left: auto;
+        background: #192318;
+        color: #8ebf84;
+        border: 1px solid #334830;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 12px;
+      }
+      .sidebar-footer {
+        padding: 14px 16px;
+        border-top: 1px solid var(--sidebar-border);
+        background: #10160f;
+        display: grid;
+        gap: 8px;
+      }
+      .back-to-chat-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px;
+        padding: 9px;
+        background: #1d271c;
+        border: 1px solid #31422f;
+        border-radius: 7px;
+        color: #b0c2ac;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.15s;
+      }
+      .back-to-chat-btn:hover {
+        background: #253323;
+        color: #fff;
+        border-color: #445c41;
+      }
+
+      /* Main Content */
+      /* Main Workspace */
+      .admin-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .admin-topbar {
+        height: 60px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 28px;
+      }
+      .topbar-title-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .topbar-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .topbar-subtitle {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .topbar-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        gap: 8px;
+      }
+      .action-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 13px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: #3b4539;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .action-btn:hover {
+        background: #f4f7f2;
+        border-color: #ccd4c6;
+      }
+      .action-btn.primary {
+        background: var(--brand);
+        color: #fff;
+        border-color: var(--brand);
+      }
+      .action-btn.primary:hover {
+        background: var(--brand-hover);
+      }
+      .action-btn.danger {
+        background: #fdf2f0;
+        color: #b83a2d;
+        border-color: #f1cfca;
+      }
+      .action-btn.danger:hover {
+        background: #fce4e1;
+      }
+
+      /* Content Area */
+      .admin-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 26px 30px;
+        padding: 24px 28px;
+      }
+
+      /* Cards & Grids */
+      /* Grids & Cards */
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 18px;
+        margin-bottom: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 22px;
+      }
+      .metric-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px 20px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        padding: 16px 18px;
+      }
+      .metric-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+      }
+      .metric-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+        display: grid;
+        place-items: center;
+      }
+      .metric-value {
+        font-size: 28px;
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+      .metric-footer {
+        margin-top: 6px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: #7b8478;
+      }
+
+      /* Section Panels */
+      /* Panels */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        margin-bottom: 22px;
+      }
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+        padding-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .panel-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .panel-desc {
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
+      }
+
+      /* Data Tables */
+      .table-controls {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 16px;
+        margin-bottom: 14px;
+      }
+      .search-box {
+        position: relative;
+        flex: 1;
+        max-width: 360px;
+      }
+      .search-box input {
+        width: 100%;
+        height: 36px;
+        padding: 0 12px 0 34px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #fbfcf9;
+        font-size: 12px;
+        outline: none;
+      }
+      .search-box input:focus {
+        border-color: #63965b;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(99, 150, 91, 0.15);
+      }
+      .search-icon {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        color: #8c9689;
+      }
+      .data-table-wrapper {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow-x: auto;
+        background: #fff;
+      }
+      table.data-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+        font-size: 12px;
+      }
+      table.data-table th {
+        background: #f7f9f5;
+        padding: 10px 14px;
+        font-weight: 600;
+        color: #4f584c;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+      table.data-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #edf1ea;
+        color: #273025;
+        vertical-align: middle;
+      }
+      table.data-table tr:last-child td {
+        border-bottom: 0;
+      }
+      table.data-table tr:hover td {
+        background: #f8faf6;
+      }
+      .td-truncate {
+        max-width: 320px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .badge-role {
+        display: inline-block;
+        padding: 2px 7px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      .badge-role.user {
+        background: #e8f0fe;
+        color: #1a73e8;
+      }
+      .badge-role.assistant {
+        background: #e6f4ea;
+        color: #137333;
+      }
+      .btn-del {
+        padding: 4px 8px;
+        border: 1px solid #f2cfca;
+        background: #fdf3f2;
+        color: #b83a2d;
+        border-radius: 5px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-del:hover {
+        background: #fce4e1;
+        border-color: #e5a8a1;
+      }
+      .pagination-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 14px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .pagination-btns {
+        display: flex;
+        gap: 6px;
+      }
+      .page-btn {
+        padding: 4px 10px;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 5px;
+        font-size: 11px;
+        cursor: pointer;
+      }
+      .page-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* SQL Console */
+      .sql-editor-container {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 14px;
+        margin-bottom: 12px;
+      }
+      .sql-presets {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px 12px;
+        background: #f8faf6;
+        border-bottom: 1px solid var(--line);
+      }
+      .sql-preset-btn {
+        padding: 4px 10px;
+        border: 1px solid #d4ded0;
+        background: #fff;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #3b4639;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .sql-preset-btn:hover {
+        background: #eff5eb;
+        border-color: #a4c49d;
+        color: #21401d;
+      }
+      .sql-textarea {
+        width: 100%;
+        min-height: 120px;
+        min-height: 110px;
+        padding: 14px;
+        border: 0;
+        background: #182017;
+        color: #a7e49b;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        outline: none;
+        resize: vertical;
+      }
+      .sql-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+      }
+
+      /* Provider Card */
+      .provider-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      /* Control Forms */
+      .form-group {
+        margin-bottom: 16px;
+      }
+      .provider-card {
+      .form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        color: #344033;
+        margin-bottom: 6px;
+      }
+      .form-input, .form-textarea {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        background: #fbfcf9;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        border-radius: 7px;
+        font-size: 13px;
+        outline: none;
+        background: #fafbf9;
+      }
+      .provider-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      .form-input:focus, .form-textarea:focus {
+        border-color: #63965b;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(99, 150, 91, 0.15);
+      }
+      .provider-name {
+        font-weight: 700;
+        font-size: 14px;
+      .form-textarea {
+        min-height: 90px;
+        resize: vertical;
+        font-family: inherit;
+      }
+      .provider-badge {
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 4px;
+      }
+      .provider-badge.active {
+        background: #e6f4ea;
+        color: #137333;
+      }
+      .provider-badge.inactive {
+        background: #f1f3f4;
+        color: #5f6368;
+      }
+      .provider-desc {
+      .form-help {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 12px;
+        margin-top: 5px;
+      }
+      .provider-btn {
+        width: 100%;
+        padding: 7px;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .provider-btn:hover {
+        background: #f0f4ee;
+      }
+
+      /* Record Details Modal */
+      /* Modal */
+      .modal-bg {
+        position: fixed;
+        inset: 0;
+        background: rgba(14, 20, 13, 0.5);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        z-index: 100;
+      }
+      .modal-bg[hidden] {
+        display: none;
+      }
+      .modal-box {
+        width: min(680px, 100%);
+        max-height: 85vh;
+        background: #fff;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        box-shadow: 0 16px 40px rgba(0,0,0,0.18);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .modal-top {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .modal-content {
+        padding: 20px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .modal-content pre {
+        background: #f6f8f4;
+        border: 1px solid #e1e7dc;
+        padding: 14px;
+        border-radius: 8px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      /* Toast */
+      .toast-msg {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: #192218;
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+        display: none;
+        z-index: 200;
+      }
+      .toast-msg.show {
+        display: block;
+        animation: fadeIn 0.2s;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-badge"><i data-lucide="database" width="18" height="18"></i></div>
+        <div class="brand-badge"><i data-lucide="shield-check" width="18" height="18"></i></div>
+        <div>
+          <div class="brand-title">catchat Studio</div>
+          <div class="brand-sub">MariaDB Control Panel</div>
+          <div class="brand-title">catchat Master</div>
+          <div class="brand-sub">Control Panel & DB Studio</div>
+        </div>
+      </div>
+      <div class="db-status-bar">
+        <span class="db-status-dot"></span>
+        <span id="dbStatusLabel">Connected · Port 3307</span>
+        <span id="dbStatusLabel">MariaDB 11.8 Active · 3307</span>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-title">Overview</div>
+        <div class="nav-group-title">Master Control</div>
+        <button class="nav-btn active" data-tab="dashboard">
+          <i data-lucide="layout-dashboard" width="16" height="16"></i> Dashboard
+        </button>
+        <button class="nav-btn" data-tab="sql">
+          <i data-lucide="terminal" width="16" height="16"></i> SQL Console
+        <button class="nav-btn" data-tab="chatbot-control">
+          <i data-lucide="sliders" width="16" height="16"></i> Chatbot Tuning & Prompt
+        </button>
+        <button class="nav-btn" data-tab="ai">
+          <i data-lucide="sparkles" width="16" height="16"></i> AI Control & Failover
+        <button class="nav-btn" data-tab="maintenance">
+          <i data-lucide="hard-drive-download" width="16" height="16"></i> Backup & Maintenance
+        </button>
+        <button class="nav-btn" data-tab="ai-health">
+          <i data-lucide="sparkles" width="16" height="16"></i> AI Channels & Failover
+        </button>
+
+        <div class="nav-group-title">Database Tables</div>
+        <div class="nav-group-title">Database Explorer (phpMyAdmin)</div>
+        <button class="nav-btn" data-tab="table" data-table="users">
+          <i data-lucide="users" width="16" height="16"></i> users
+          <span class="nav-badge" id="badge-users">0</span>
+        </button>
+        <button class="nav-btn" data-tab="table" data-table="sessions">
+          <i data-lucide="messages-square" width="16" height="16"></i> sessions
+          <span class="nav-badge" id="badge-sessions">0</span>
+        </button>
+        <button class="nav-btn" data-tab="table" data-table="messages">
+          <i data-lucide="message-circle" width="16" height="16"></i> messages
+          <span class="nav-badge" id="badge-messages">0</span>
+        </button>
+        <button class="nav-btn" data-tab="table" data-table="user_keys">
+          <i data-lucide="key" width="16" height="16"></i> user_keys
+          <span class="nav-badge" id="badge-user_keys">0</span>
+        </button>
+        <button class="nav-btn" data-tab="sql">
+          <i data-lucide="terminal" width="16" height="16"></i> SQL Query Console
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <a href="/" class="back-to-chat-btn">
+          <i data-lucide="arrow-left" width="15" height="15"></i> Back to CatChat
+          <i data-lucide="arrow-left" width="15" height="15"></i> Open Chat App
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="topbar-title-group">
+          <div>
+            <h1 class="topbar-title" id="pageTitle">Database Dashboard</h1>
+            <p class="topbar-subtitle" id="pageSubtitle">Live statistics, database tables, and AI engine status</p>
+          </div>
+        <div>
+          <h1 class="topbar-title" id="pageTitle">Master Control Dashboard</h1>
+          <p class="topbar-subtitle" id="pageSubtitle">Full control of AI engine, MariaDB tables, system prompt, and backups</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="action-btn" id="refreshBtn">
+            <i data-lucide="refresh-cw" width="14" height="14"></i> Refresh
+          </button>
+        </div>
+      </header>
+
+      <div class="admin-content">
+        <!-- 1. DASHBOARD VIEW -->
+        <div id="view-dashboard">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>TOTAL USERS</span>
+                <div class="metric-icon" style="background:#eff5eb; color:#2b5526;"><i data-lucide="users" width="16" height="16"></i></div>
+              </div>
+              <div class="metric-value" id="statUsers">0</div>
+              <div class="metric-footer">Registered in users table</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>CHAT SESSIONS</span>
+                <span>CONVERSATIONS</span>
+                <div class="metric-icon" style="background:#e8f4fd; color:#1877f2;"><i data-lucide="messages-square" width="16" height="16"></i></div>
+              </div>
+              <div class="metric-value" id="statSessions">0</div>
+              <div class="metric-footer">Stored in sessions table</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>TOTAL MESSAGES</span>
+                <div class="metric-icon" style="background:#fef7e0; color:#b06000;"><i data-lucide="message-circle" width="16" height="16"></i></div>
+              </div>
+              <div class="metric-value" id="statMessages">0</div>
+              <div class="metric-footer">Stored in messages table</div>
+              <div class="metric-footer">User questions + AI replies</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">
+                <span>API KEYS</span>
+                <div class="metric-icon" style="background:#f3e8fd; color:#7e22ce;"><i data-lucide="key" width="16" height="16"></i></div>
+              </div>
+              <div class="metric-value" id="statKeys">0</div>
+              <div class="metric-footer">Stored in user_keys table</div>
+            </div>
+          </div>
+
+          <!-- Tables Overview Panel -->
+          <!-- Quick Actions Bar -->
+          <div class="panel" style="background: linear-gradient(135deg, #f3f7ef, #eaf2e5); border-color: #d1dfcb;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+              <div>
+                <h3 style="font-size: 15px; font-weight: 700; color: #213c1c;">⚡ Master Operations Center</h3>
+                <p style="font-size: 12px; color: #52634e; margin-top: 2px;">One-click actions to tune AI behavior, backup database, or inspect chat messages</p>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button class="action-btn primary" onclick="switchTab('chatbot-control')">
+                  <i data-lucide="sliders" width="13" height="13"></i> Tune AI Prompt
+                </button>
+                <a href="/api/admin/backup" class="action-btn" style="text-decoration: none;">
+                  <i data-lucide="download" width="13" height="13"></i> Backup Database (SQL)
+                </a>
+                <button class="action-btn" onclick="switchTab('sql')">
+                  <i data-lucide="terminal" width="13" height="13"></i> SQL Runner
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Database Tables Overview -->
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Database Tables (catchat_db)</h2>
+                <p class="panel-desc">Click any table to browse, search, or delete records</p>
+              </div>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Table Name</th>
+                    <th>Records Count</th>
+                    <th>Description</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardTablesBody">
+                  <tr><td colspan="4" style="text-align: center; color: #888;">Loading tables...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+          <!-- Server & Infrastructure Panel -->
+        <!-- 2. CHATBOT BEHAVIOR & TUNING VIEW -->
+        <div id="view-chatbot-control" style="display: none;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Infrastructure & Runtime</h2>
+                <p class="panel-desc">MariaDB Unix Socket & Nginx Reverse Proxy</p>
+                <h2 class="panel-title">Chatbot Behavior & System Prompt Tuning</h2>
+                <p class="panel-desc">Control how the chatbot speaks and responds in real-time without restarting the server</p>
+              </div>
+              <button class="action-btn primary" id="saveChatbotConfigBtn">
+                <i data-lucide="save" width="13" height="13"></i> Save Settings
+              </button>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; font-size: 13px;">
+              <div style="padding: 12px; background: #fafbf8; border: 1px solid var(--line); border-radius: 8px;">
+                <div style="color: var(--muted); font-size: 11px; font-weight: 600;">DATABASE ENGINE</div>
+                <div style="font-weight: 700; margin-top: 4px;" id="serverDbVersion">MariaDB 11.8</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">Socket: data/mysql.sock</div>
+
+            <div class="form-group">
+              <label class="form-label" for="adminSystemPrompt">Active AI System Prompt</label>
+              <textarea class="form-textarea" id="adminSystemPrompt" rows="4"></textarea>
+              <p class="form-help">This system prompt instructs Gemini and failover models on tone, behavior, personality, and markdown formatting.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+              <div class="form-group">
+                <label class="form-label" for="adminDefaultKey">Default System Gemini API Key</label>
+                <input type="password" class="form-input" id="adminDefaultKey" placeholder="Enter new API key to override (e.g. AIzaSy...)" />
+                <p class="form-help" id="adminDefaultKeyStatus">Active Key: ••••••••</p>
+              </div>
+              <div style="padding: 12px; background: #fafbf8; border: 1px solid var(--line); border-radius: 8px;">
+                <div style="color: var(--muted); font-size: 11px; font-weight: 600;">BACKEND RUNTIME</div>
+                <div style="font-weight: 700; margin-top: 4px;" id="serverNodeVersion">Node.js Express</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">Socket: data/backend.sock</div>
+              <div class="form-group">
+                <label class="form-label">Rate Limiter</label>
+                <input type="text" class="form-input" id="adminRateLimit" readonly value="20 requests / minute" style="background:#f1f3ee; color:#666;" />
+                <p class="form-help">Prevents abuse per IP address.</p>
+              </div>
+              <div style="padding: 12px; background: #fafbf8; border: 1px solid var(--line); border-radius: 8px;">
+                <div style="color: var(--muted); font-size: 11px; font-weight: 600;">HTTP REVERSE PROXY</div>
+                <div style="font-weight: 700; margin-top: 4px;">Nginx 1.30</div>
+                <div style="font-size: 11px; color: #666; margin-top: 2px;">Port: 8085</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. BACKUP & MAINTENANCE VIEW -->
+        <div id="view-maintenance" style="display: none;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Database Maintenance & 1-Click Backup</h2>
+                <p class="panel-desc">Download complete SQL dumps or clean up test sessions</p>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-bottom: 20px;">
+              <!-- Backup Card -->
+              <div style="border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: #fafbf9;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <div style="width: 32px; height: 32px; border-radius: 7px; background: #e8f4fd; color: #1877f2; display: grid; place-items: center;">
+                    <i data-lucide="download" width="16" height="16"></i>
+                  </div>
+                  <h4 style="font-size: 14px; font-weight: 700;">Export Full Database (SQL)</h4>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;">Generates a standalone .sql file with CREATE and INSERT statements for all users, messages, sessions, and keys.</p>
+                <a href="/api/admin/backup" class="action-btn primary" style="width: 100%; justify-content: center; text-decoration: none;">
+                  <i data-lucide="download" width="13" height="13"></i> Download Backup (.sql)
+                </a>
+              </div>
+
+              <!-- Purge Guest Card -->
+              <div style="border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: #fafbf9;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                  <div style="width: 32px; height: 32px; border-radius: 7px; background: #fdf2f0; color: #b83a2d; display: grid; place-items: center;">
+                    <i data-lucide="trash-2" width="16" height="16"></i>
+                  </div>
+                  <h4 style="font-size: 14px; font-weight: 700;">Clean Guest / Test Sessions</h4>
+                </div>
+                <p style="font-size: 12px; color: var(--muted); margin-bottom: 14px;">Removes conversations created in Guest mode, keeping all registered user accounts and their private chats intact.</p>
+                <button class="action-btn danger" style="width: 100%; justify-content: center;" onclick="purgeGuestSessions()">
+                  <i data-lucide="trash-2" width="13" height="13"></i> Purge Guest Data
+                </button>
+              </div>
+            </div>
+
+            <!-- Server Logs -->
+            <div style="border-top: 1px solid var(--line); padding-top: 18px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+                <h4 style="font-size: 13px; font-weight: 700;">Real-time Server Access Log (Recent 50 requests)</h4>
+                <button class="action-btn" onclick="loadServerLogs()"><i data-lucide="refresh-cw" width="12" height="12"></i> Refresh Logs</button>
+              </div>
+              <pre id="serverLogsPre" style="background:#182017; color:#8ce37d; padding:14px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:11px; max-height:220px; overflow-y:auto; line-height:1.4;">Loading logs...</pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. TABLE BROWSER VIEW (phpMyAdmin Browse Mode) -->
+        <!-- 4. TABLE BROWSER VIEW (phpMyAdmin Browse Mode) -->
+        <div id="view-table" style="display: none;">
+          <div class="panel">
+            <div class="table-controls">
+              <div class="search-box">
+                <i data-lucide="search" width="14" height="14" class="search-icon"></i>
+                <input type="text" id="tableSearchInput" placeholder="Search in this table..." />
+              </div>
+              <button class="action-btn" id="tableSearchBtn">
+                Search
+              </button>
+            </div>
+            <div class="data-table-wrapper">
+              <table class="data-table" id="activeDataTable">
+                <thead id="activeTableHead"></thead>
+                <tbody id="activeTableBody"></tbody>
+              </table>
+            </div>
+            <div class="pagination-bar">
+              <span id="paginationInfo">Showing 0 rows</span>
+              <div class="pagination-btns">
+                <button class="page-btn" id="prevPageBtn">Previous</button>
+                <button class="page-btn" id="nextPageBtn">Next</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. SQL CONSOLE VIEW (phpMyAdmin SQL tab) -->
+        <!-- 5. SQL CONSOLE VIEW (phpMyAdmin SQL tab) -->
+        <div id="view-sql" style="display: none;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">Run Raw SQL Queries</h2>
+                <p class="panel-desc">Execute queries directly against <code>catchat_db</code></p>
+              </div>
+            </div>
+            <div class="sql-editor-container">
+              <div class="sql-presets">
+                <span style="font-size: 11px; font-weight: 700; color: #666; align-self: center; margin-right: 4px;">Templates:</span>
+                <button class="sql-preset-btn" data-sql="SELECT * FROM users ORDER BY id DESC LIMIT 20;">All Users</button>
+                <button class="sql-preset-btn" data-sql="SELECT * FROM sessions ORDER BY updated_at DESC LIMIT 20;">Recent Sessions</button>
+                <button class="sql-preset-btn" data-sql="SELECT id, session_id, role, LEFT(text, 80) AS snippet, created_at FROM messages ORDER BY id DESC LIMIT 20;">Latest Messages</button>
+                <button class="sql-preset-btn" data-sql="SELECT * FROM user_keys;">API Keys</button>
+                <button class="sql-preset-btn" data-sql="SHOW TABLE STATUS;">Table Status</button>
+              </div>
+              <textarea class="sql-textarea" id="sqlQueryText" placeholder="Enter SQL query here, e.g. SELECT * FROM users;"></textarea>
+            </div>
+            <div class="sql-actions">
+            <div class="sql-actions" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+              <button class="action-btn primary" id="runSqlBtn">
+                <i data-lucide="play" width="13" height="13"></i> Execute Query
+              </button>
+              <span id="sqlExecutionMsg" style="font-size: 12px; color: #555;"></span>
+            </div>
+
+            <!-- Query Results -->
+            <div id="sqlResultsBox" style="display: none;">
+              <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Results</h3>
+              <h3 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Query Results</h3>
+              <div class="data-table-wrapper">
+                <table class="data-table" id="sqlResultsTable">
+                  <thead id="sqlResultsHead"></thead>
+                  <tbody id="sqlResultsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. AI CONTROL & FAILOVER VIEW -->
+        <div id="view-ai" style="display: none;">
+        <!-- 6. AI HEALTH & FAILOVER VIEW -->
+        <div id="view-ai-health" style="display: none;">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">AI Engine & Auto-Failover Providers</h2>
+                <p class="panel-desc">Test live connections and inspect multi-model failover channels</p>
+                <h2 class="panel-title">AI Engine & Auto-Failover Channels</h2>
+                <p class="panel-desc">Test live connections and inspect multi-model failover status</p>
+              </div>
+            </div>
+            <div class="provider-grid" id="providerGrid">
+              <!-- Rendered dynamically -->
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;" id="aiProviderGrid"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Details View Modal -->
+    <div class="modal-bg" id="detailModal" hidden>
+      <div class="modal-box">
+        <div class="modal-top">
+          <h3 style="font-size: 15px; font-weight: 700;" id="modalRecordTitle">Record Inspector</h3>
+          <button style="border: 0; background: transparent; cursor: pointer; color: #666;" id="closeDetailModal">
+            <i data-lucide="x" width="16" height="16"></i>
+          </button>
+        </div>
+        <div class="modal-content" id="modalRecordContent"></div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-msg" id="adminToast"></div>
+
+    <script>
+      // Admin Key & Status interceptor for Coolify & Production
+      const _origFetch = window.fetch;
+      window.fetch = async function (url, options = {}) {
+        const urlStr = String(url);
+        if (urlStr.includes("/api/admin")) {
+          const adminKey = localStorage.getItem("catchat_admin_key") || "";
+          options.headers = options.headers || {};
+          if (adminKey) {
+            if (options.headers instanceof Headers) {
+              options.headers.set("x-admin-key", adminKey);
+            } else {
+              options.headers["x-admin-key"] = adminKey;
+            }
+          }
+        }
+        const res = await _origFetch(url, options);
+        if (urlStr.includes("/api/admin")) {
+          if (res.status === 401) {
+            const pass = prompt("🔐 Enter Admin Secret Key to access catchat DB Studio:");
+            if (pass) {
+              localStorage.setItem("catchat_admin_key", pass.trim());
+              location.reload();
+            }
+          } else if (res.status === 403) {
+            document.body.innerHTML = `
+              <div style="height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#111611;color:#fff;font-family:sans-serif;text-align:center;padding:24px;">
+                <div style="font-size:42px;margin-bottom:16px;">🛡️</div>
+                <h1 style="color:#e05252;margin-bottom:12px;font-size:24px;font-weight:700;">Admin Panel Disabled</h1>
+                <p style="color:#9aa897;max-width:480px;line-height:1.6;font-size:14px;">The administrator has disabled the Admin Control Panel on this instance (ENABLE_ADMIN=false).</p>
+                <a href="/" style="margin-top:22px;display:inline-block;padding:10px 22px;background:#2b5526;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;">Back to Chatbot</a>
+              </div>
+            `;
+          }
+        }
+        return res;
+      };
+
+      let currentTab = "dashboard";
+      let activeTable = "users";
+      let currentPage = 1;
+      let currentLimit = 20;
+      let overviewData = null;
+
+      function showToast(msg) {
+        const toast = document.getElementById("adminToast");
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 2500);
+      }
+
+      function icons() {
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      // Fetch Dashboard Overview
+      async function loadOverview() {
+        try {
+          const res = await fetch("/api/admin/overview");
+          const data = await res.json();
+          if (data && data.ok) {
+            overviewData = data;
+            document.getElementById("statUsers").textContent = data.stats.users;
+            document.getElementById("statSessions").textContent = data.stats.sessions;
+            document.getElementById("statMessages").textContent = data.stats.messages;
+            document.getElementById("statKeys").textContent = data.stats.keys;
+
+            document.getElementById("badge-users").textContent = data.stats.users;
+            document.getElementById("badge-sessions").textContent = data.stats.sessions;
+            document.getElementById("badge-messages").textContent = data.stats.messages;
+            document.getElementById("badge-user_keys").textContent = data.stats.keys;
+
+            if (data.stats.version) {
+              document.getElementById("serverDbVersion").textContent = data.stats.version;
+            }
+            if (data.server?.nodeVersion) {
+              document.getElementById("serverNodeVersion").textContent = "Node " + data.server.nodeVersion;
+            }
+
+            // Render tables list on dashboard
+            const tbody = document.getElementById("dashboardTablesBody");
+            tbody.replaceChildren();
+            data.tables.forEach((t) => {
+              const tr = document.createElement("tr");
+              tr.innerHTML = `
+                <td><strong style="color:#223320;">${t.name}</strong></td>
+                <td><span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#eff5ea; color:#2b5526; font-weight:700;">${t.count} rows</span></td>
+                <td style="color:#666;">${t.desc}</td>
+                <td style="text-align: right;">
+                  <button class="action-btn" onclick="openTableTab('${t.name}')">
+                    <i data-lucide="eye" width="13" height="13"></i> Browse
+                    <i data-lucide="eye" width="13" height="13"></i> Browse Table
+                  </button>
+                </td>
+              `;
+              tbody.append(tr);
+            });
+
+            // Render AI Providers
+            renderProviders(data.providers);
+            icons();
+          }
+        } catch (err) {
+          console.error("Overview load failed:", err);
+          console.error("Overview error:", err);
+        }
+      }
+
+      function renderProviders(providers) {
+        const grid = document.getElementById("providerGrid");
+        const grid = document.getElementById("aiProviderGrid");
+        if (!grid) return;
+        grid.replaceChildren();
+
+        const providerList = [
+          { key: "gemini", name: "Google Gemini", model: "gemini-3.5-flash", desc: "Primary intelligent conversational model with default key fallback" },
+          { key: "groq", name: "Groq Cloud", model: "openai/gpt-oss-120b", desc: "Ultra-fast open-weight reasoning model for instant failover" },
+          { key: "cohere", name: "Cohere", model: "command-r-08-2024", desc: "Enterprise conversational agent fallback channel" },
+          { key: "openrouter", name: "OpenRouter", model: "google/gemini-2.0-flash-exp:free", desc: "Multi-provider free tier fallback engine" },
+          { key: "gemini", name: "Google Gemini", model: "gemini-3.5-flash", desc: "Primary model for fast, high-quality responses" },
+          { key: "groq", name: "Groq Cloud", model: "openai/gpt-oss-120b", desc: "Ultra-fast open reasoning failover channel" },
+          { key: "cohere", name: "Cohere", model: "command-r-08-2024", desc: "Command-R enterprise conversational fallback" },
+          { key: "openrouter", name: "OpenRouter", model: "google/gemini-2.0-flash-exp:free", desc: "Free tier auto-failover routing" },
+        ];
+
+        providerList.forEach((p) => {
+          const conf = providers && providers[p.key] && providers[p.key].configured;
+          const card = document.createElement("div");
+          card.className = "provider-card";
+          card.style.cssText = "border: 1px solid var(--line); border-radius: 10px; padding: 16px; background: #fafbf9; display: flex; flex-direction: column; justify-content: space-between;";
+          card.innerHTML = `
+            <div>
+              <div class="provider-top">
+                <span class="provider-name">${p.name}</span>
+                <span class="provider-badge ${conf ? 'active' : 'inactive'}">${conf ? 'CONFIGURED ✓' : 'NOT SET'}</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <span style="font-weight: 700; font-size: 14px;">${p.name}</span>
+                <span style="font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; ${conf ? 'background:#e6f4ea; color:#137333;' : 'background:#f1f3f4; color:#666;'}">
+                  ${conf ? 'CONFIGURED ✓' : 'NOT SET'}
+                </span>
+              </div>
+              <div style="font-family: monospace; font-size: 11px; color: #2e6629; margin-bottom: 6px;">${p.model}</div>
+              <div class="provider-desc">${p.desc}</div>
+              <div style="font-size: 11px; color: var(--muted); margin-bottom: 12px;">${p.desc}</div>
+            </div>
+            <button class="provider-btn" onclick="testAiProvider('${p.key}')">
+              <i data-lucide="play" width="11" height="11"></i> Test Connection
+            <button class="action-btn" onclick="testAiProvider('${p.key}')" style="width: 100%; justify-content: center;">
+              <i data-lucide="play" width="12" height="12"></i> Test Ping Connection
+            </button>
+          `;
+          grid.append(card);
+        });
+        icons();
+      }
+
+      async function testAiProvider(providerKey) {
+        showToast("Testing AI provider: " + providerKey + "...");
+        showToast("Testing connection to " + providerKey + "...");
+        try {
+          const res = await fetch("/api/admin/test-ai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: providerKey })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            alert(`✅ ${data.provider || providerKey} OK!\nModel: ${data.model}\nResponse: "${data.text.trim()}"`);
+            alert(`✅ ${data.provider || providerKey} Connection OK!\nModel: ${data.model}\nReply: "${data.text.trim()}"`);
+          } else {
+            alert(`⚠️ ${providerKey} Error:\n${data.message || "Failed to get response"}`);
+            alert(`⚠️ Connection Error:\n${data.message || "Failed"}`);
+          }
+        } catch (err) {
+          alert("Error contacting server: " + err.message);
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      // Chatbot Settings
+      async function loadChatbotConfig() {
+        try {
+          const res = await fetch("/api/admin/config");
+          const data = await res.json();
+          if (data && data.ok) {
+            document.getElementById("adminSystemPrompt").value = data.systemPrompt || "";
+            document.getElementById("adminDefaultKeyStatus").textContent = "Active Key: " + data.defaultKeyMasked;
+            document.getElementById("adminRateLimit").value = `${data.rateLimit} requests / minute`;
+          }
+        } catch {}
+      }
+
+      document.getElementById("saveChatbotConfigBtn")?.addEventListener("click", async () => {
+        const systemPrompt = document.getElementById("adminSystemPrompt").value.trim();
+        const defaultKey = document.getElementById("adminDefaultKey").value.trim();
+
+        try {
+          const res = await fetch("/api/admin/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ systemPrompt, defaultKey })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            showToast("Chatbot settings saved successfully!");
+            document.getElementById("adminDefaultKey").value = "";
+            loadChatbotConfig();
+          }
+        } catch (e) {
+          alert("Error saving: " + e.message);
+        }
+      });
+
+      // Purge Guest Sessions
+      async function purgeGuestSessions() {
+        if (!confirm("Are you sure you want to purge all guest chat conversations? Registered user chats will remain safe.")) return;
+        try {
+          const res = await fetch("/api/admin/purge", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ target: "guest_sessions" })
+          });
+          const data = await res.json();
+          if (data && data.ok) {
+            alert("✅ " + data.message);
+            loadOverview();
+          } else {
+            alert("Purge failed: " + data.message);
+          }
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      // Server Logs
+      async function loadServerLogs() {
+        try {
+          const res = await fetch("/api/admin/logs");
+          const data = await res.json();
+          if (data && data.ok && Array.isArray(data.logs)) {
+            document.getElementById("serverLogsPre").textContent = data.logs.join("\n") || "No log entries yet.";
+          }
+        } catch {}
+      }
+
+      // Table Browser Functions
+      async function loadTableData(tableName, page = 1) {
+        activeTable = tableName;
+        currentPage = page;
+        const search = document.getElementById("tableSearchInput").value.trim();
+
+        document.getElementById("activeTableHead").innerHTML = '<tr><th colspan="10">Loading...</th></tr>';
+        document.getElementById("activeTableHead").innerHTML = '<tr><th>Loading...</th></tr>';
+        document.getElementById("activeTableBody").innerHTML = '';
+
+        try {
+          const url = `/api/admin/table/${tableName}?page=${page}&limit=${currentLimit}${search ? '&search=' + encodeURIComponent(search) : ''}`;
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data && data.ok) {
+            const thead = document.getElementById("activeTableHead");
+            const tbody = document.getElementById("activeTableBody");
+
+            // Columns
+            thead.replaceChildren();
+            const trHead = document.createElement("tr");
+            data.columns.forEach((col) => {
+              const th = document.createElement("th");
+              th.textContent = col;
+              trHead.append(th);
+            });
+            const thAction = document.createElement("th");
+            thAction.style.textAlign = "right";
+            thAction.textContent = "Actions";
+            trHead.append(thAction);
+            thead.append(trHead);
+
+            // Rows
+            tbody.replaceChildren();
+            if (!data.rows.length) {
+              tbody.innerHTML = `<tr><td colspan="${data.columns.length + 1}" style="text-align: center; color: #888; padding: 24px;">No records found in table '${tableName}'.</td></tr>`;
+            } else {
+              data.rows.forEach((row) => {
+                const tr = document.createElement("tr");
+                data.columns.forEach((col) => {
+                  const td = document.createElement("td");
+                  const val = row[col];
+                  if (col === "role") {
+                    td.innerHTML = `<span class="badge-role ${val}">${val}</span>`;
+                  } else if (col === "text" || col === "raw_text" || col === "html") {
+                    td.className = "td-truncate";
+                    td.textContent = val || "";
+                    td.title = "Click to inspect full content";
+                    td.title = "Click to inspect";
+                    td.style.cursor = "pointer";
+                    td.addEventListener("click", () => showRecordModal(tableName, row));
+                  } else if (col === "updated_at" && typeof val === "number" && val > 1000000000) {
+                    td.textContent = new Date(val).toLocaleString();
+                  } else if (col === "created_at" && val) {
+                    td.textContent = new Date(val).toLocaleString();
+                  } else {
+                    td.textContent = val !== null && val !== undefined ? String(val) : "NULL";
+                  }
+                  tr.append(td);
+                });
+
+                // Row action buttons
+                const tdAction = document.createElement("td");
+                tdAction.style.textAlign = "right";
+                const pkVal = row.id || row.client_id;
+                tdAction.innerHTML = `
+                  <button class="action-btn" style="padding: 2px 7px; display: inline-flex;" onclick='showRecordModal("${tableName}", ${JSON.stringify(row).replace(/'/g, "&apos;")})'>
+                    <i data-lucide="eye" width="12" height="12"></i>
+                  </button>
+                  <button class="btn-del" onclick="deleteTableRow('${tableName}', '${pkVal}')">
+                    <i data-lucide="trash-2" width="12" height="12"></i>
+                  </button>
+                `;
+                tr.append(tdAction);
+                tbody.append(tr);
+              });
+            }
+
+            // Pagination info
+            const total = data.pagination.total;
+            const start = total ? (page - 1) * currentLimit + 1 : 0;
+            const end = Math.min(page * currentLimit, total);
+            document.getElementById("paginationInfo").textContent = `Showing ${start}–${end} of ${total} records`;
+
+            document.getElementById("prevPageBtn").disabled = page <= 1;
+            document.getElementById("nextPageBtn").disabled = page >= data.pagination.totalPages;
+
+            icons();
+          }
+        } catch (err) {
+          console.error("Table data load failed:", err);
+          console.error("Table data error:", err);
+        }
+      }
+
+      async function deleteTableRow(tableName, id) {
+        if (!confirm(`Are you sure you want to delete this record from table '${tableName}'?`)) return;
+        if (!confirm(`Delete this record from table '${tableName}'?`)) return;
+        try {
+          const res = await fetch(`/api/admin/table/${tableName}/${id}`, { method: "DELETE" });
+          const data = await res.json();
+          if (data && data.ok) {
+            showToast("Record deleted from MySQL");
+            loadTableData(tableName, currentPage);
+            loadOverview();
+          } else {
+            alert("Delete failed: " + (data.error?.message || "Unknown error"));
+          }
+        } catch (e) {
+          alert("Error: " + e.message);
+        }
+      }
+
+      function showRecordModal(tableName, row) {
+        document.getElementById("modalRecordTitle").textContent = `${tableName} · Record #${row.id || row.client_id || ''}`;
+        const content = document.getElementById("modalRecordContent");
+        content.replaceChildren();
+
+        const pre = document.createElement("pre");
+        pre.textContent = JSON.stringify(row, null, 2);
+        content.append(pre);
+
+        if (row.html) {
+          const div = document.createElement("div");
+          div.style.marginTop = "14px";
+          div.style.padding = "14px";
+          div.style.border = "1px solid #d8e2d4";
+          div.style.borderRadius = "8px";
+          div.innerHTML = `<h4 style="margin-bottom:8px; font-size:12px; color:#555;">Rendered Assistant HTML:</h4>` + row.html;
+          div.innerHTML = `<h4 style="margin-bottom:8px; font-size:12px; color:#555;">Rendered HTML:</h4>` + row.html;
+          content.append(div);
+        }
+
+        document.getElementById("detailModal").hidden = false;
+        icons();
+      }
+
+      document.getElementById("closeDetailModal").addEventListener("click", () => {
+        document.getElementById("detailModal").hidden = true;
+      });
+
+      // SQL Query Console Runner
+      async function runQuery(sqlText) {
+        const sql = sqlText || document.getElementById("sqlQueryText").value.trim();
+        if (!sql) return;
+
+        const msg = document.getElementById("sqlExecutionMsg");
+        msg.textContent = "Executing query in MariaDB...";
+        msg.textContent = "Executing query...";
+        msg.style.color = "#555";
+
+        try {
+          const res = await fetch("/api/admin/query", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sql })
+          });
+          const data = await res.json();
+
+          if (data && data.ok) {
+            msg.textContent = `Query executed in ${data.durationMs}ms · ${data.type === 'select' ? data.rowCount + ' row(s) returned' : data.affectedRows + ' row(s) affected'}`;
+            msg.textContent = `Executed in ${data.durationMs}ms · ${data.type === 'select' ? data.rowCount + ' row(s)' : data.affectedRows + ' affected'}`;
+            msg.style.color = "#207227";
+
+            const resultsBox = document.getElementById("sqlResultsBox");
+            resultsBox.style.display = "block";
+            const thead = document.getElementById("sqlResultsHead");
+            const tbody = document.getElementById("sqlResultsBody");
+
+            if (data.type === "select" && data.columns && data.rows) {
+              thead.replaceChildren();
+              const trHead = document.createElement("tr");
+              data.columns.forEach((c) => {
+                const th = document.createElement("th");
+                th.textContent = c;
+                trHead.append(th);
+              });
+              thead.append(trHead);
+
+              tbody.replaceChildren();
+              data.rows.forEach((r) => {
+                const tr = document.createElement("tr");
+                data.columns.forEach((c) => {
+                  const td = document.createElement("td");
+                  td.textContent = r[c] !== null && r[c] !== undefined ? String(r[c]) : "NULL";
+                  tr.append(td);
+                });
+                tbody.append(tr);
+              });
+            } else {
+              thead.innerHTML = "<tr><th>Status</th><th>Affected Rows</th><th>Insert ID</th></tr>";
+              tbody.innerHTML = `<tr><td><span style="color:#207227; font-weight:700;">OK</span></td><td>${data.affectedRows}</td><td>${data.insertId || 'None'}</td></tr>`;
+            }
+            loadOverview();
+          } else {
+            msg.textContent = "Error: " + (data.error?.message || "Execution error");
+            msg.style.color = "#d9483b";
+          }
+        } catch (err) {
+          msg.textContent = "Connection error: " + err.message;
+          msg.style.color = "#d9483b";
+        }
+      }
+
+      document.getElementById("runSqlBtn").addEventListener("click", () => runQuery());
+      document.querySelectorAll(".sql-preset-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.getElementById("sqlQueryText").value = btn.dataset.sql;
+          runQuery(btn.dataset.sql);
+        });
+      });
+
+      // Navigation & Tab Switching
+      function switchTab(tabId, tableName = null) {
+        currentTab = tabId;
+        document.querySelectorAll(".nav-btn").forEach((btn) => {
+          const match = tableName ? btn.dataset.table === tableName : btn.dataset.tab === tabId;
+          btn.classList.toggle("active", match);
+        });
+
+        document.getElementById("view-dashboard").style.display = tabId === "dashboard" ? "block" : "none";
+        document.getElementById("view-chatbot-control").style.display = tabId === "chatbot-control" ? "block" : "none";
+        document.getElementById("view-maintenance").style.display = tabId === "maintenance" ? "block" : "none";
+        document.getElementById("view-table").style.display = tabId === "table" ? "block" : "none";
+        document.getElementById("view-sql").style.display = tabId === "sql" ? "block" : "none";
+        document.getElementById("view-ai").style.display = tabId === "ai" ? "block" : "none";
+        document.getElementById("view-ai-health").style.display = tabId === "ai-health" ? "block" : "none";
+
+        if (tabId === "dashboard") {
+          document.getElementById("pageTitle").textContent = "Database Dashboard";
+          document.getElementById("pageSubtitle").textContent = "Live statistics, database tables, and AI engine status";
+          document.getElementById("pageTitle").textContent = "Master Control Dashboard";
+          document.getElementById("pageSubtitle").textContent = "Real-time statistics, database overview, and chatbot status";
+          loadOverview();
+        } else if (tabId === "chatbot-control") {
+          document.getElementById("pageTitle").textContent = "Chatbot Tuning & Prompt";
+          document.getElementById("pageSubtitle").textContent = "Modify AI personality, system prompt, and API key live";
+          loadChatbotConfig();
+        } else if (tabId === "maintenance") {
+          document.getElementById("pageTitle").textContent = "Backup & Maintenance";
+          document.getElementById("pageSubtitle").textContent = "1-click database SQL export and guest session cleanup";
+          loadServerLogs();
+        } else if (tabId === "table") {
+          const target = tableName || activeTable || "users";
+          document.getElementById("pageTitle").textContent = `Table: ${target}`;
+          document.getElementById("pageTitle").textContent = `Database Table: ${target}`;
+          document.getElementById("pageSubtitle").textContent = `Browsing data rows in catchat_db.${target}`;
+          document.getElementById("tableSearchInput").value = "";
+          loadTableData(target, 1);
+        } else if (tabId === "sql") {
+          document.getElementById("pageTitle").textContent = "SQL Query Console";
+          document.getElementById("pageSubtitle").textContent = "Execute raw queries against MariaDB like phpMyAdmin";
+          if (!document.getElementById("sqlQueryText").value) {
+            document.getElementById("sqlQueryText").value = "SELECT * FROM users ORDER BY id DESC;";
+          }
+        } else if (tabId === "ai") {
+          document.getElementById("pageTitle").textContent = "AI Engine & Multi-Model Failover";
+          document.getElementById("pageSubtitle").textContent = "Test and manage Google Gemini, Groq, Cohere, and OpenRouter channels";
+        } else if (tabId === "ai-health") {
+          document.getElementById("pageTitle").textContent = "AI Channels & Failover Health";
+          document.getElementById("pageSubtitle").textContent = "Test and verify live status of Gemini, Groq, Cohere, and OpenRouter";
+          loadOverview();
+        }
+        icons();
+      }
+
+      window.openTableTab = (tableName) => {
+        switchTab("table", tableName);
+      };
+
+      document.querySelectorAll(".nav-btn[data-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          const table = btn.dataset.table;
+          switchTab(tab, table);
+        });
+      });
+
+      document.getElementById("refreshBtn").addEventListener("click", () => {
+        if (currentTab === "table") {
+          loadTableData(activeTable, currentPage);
+        } else if (currentTab === "chatbot-control") {
+          loadChatbotConfig();
+        } else if (currentTab === "maintenance") {
+          loadServerLogs();
+        } else {
+          loadOverview();
+        }
+        showToast("Refreshed");
+      });
+
+      document.getElementById("tableSearchBtn").addEventListener("click", () => {
+        loadTableData(activeTable, 1);
+      });
+      document.getElementById("tableSearchInput").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") loadTableData(activeTable, 1);
+      });
+      document.getElementById("prevPageBtn").addEventListener("click", () => {
+        if (currentPage > 1) loadTableData(activeTable, currentPage - 1);
+      });
+      document.getElementById("nextPageBtn").addEventListener("click", () => {
+        loadTableData(activeTable, currentPage + 1);
+      });
+
+      // Initial Boot
+      // Initial Load
+      loadOverview();
+    </script>
+  </body>
+</html>

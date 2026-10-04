@@ -364,7 +364,8 @@
         background: white;
       }
       .share-button,
-      .api-key-button {
+      .api-key-button,
+      .auth-button {
         display: flex;
         align-items: center;
         gap: 7px;
@@ -379,14 +380,77 @@
         transition: border 0.15s, background 0.15s, color 0.15s;
       }
       .share-button:hover,
-      .api-key-button:hover {
+      .api-key-button:hover,
+      .auth-button:hover {
         border-color: #c8d2c1;
         background: #fbfcf9;
       }
-      .api-key-button.has-key {
+      .api-key-button.has-key,
+      .auth-button.logged-in {
         border-color: #bcd8b0;
         color: #265922;
         background: #f2f7ef;
+      }
+      .history-item-row {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        border-radius: 7px;
+        position: relative;
+        transition: background 0.15s;
+      }
+      .history-item-row:hover {
+        background: #e5e9e0;
+      }
+      .history-item-row.active {
+        background: #e5e9e0;
+        font-weight: 600;
+      }
+      .history-item-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 36px;
+        padding: 0 6px 0 10px;
+        border: 0;
+        background: transparent;
+        color: #646d61;
+        text-align: left;
+        font-size: 12px;
+        cursor: pointer;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .history-item-row.active .history-item-btn {
+        color: var(--ink);
+      }
+      .history-item-btn span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .history-del-btn {
+        width: 24px;
+        height: 24px;
+        margin-right: 6px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        background: transparent;
+        color: #9aa296;
+        border-radius: 5px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.15s, color 0.15s, background 0.15s;
+      }
+      .history-item-row:hover .history-del-btn {
+        opacity: 1;
+      }
+      .history-del-btn:hover {
+        background: #edd5d1;
+        color: #b33827;
       }
       .main-scroll {
         min-height: 0;
@@ -907,7 +971,8 @@
           gap: 4px;
         }
         .share-button,
-        .api-key-button {
+        .api-key-button,
+        .auth-button {
           width: 34px;
           justify-content: center;
           padding: 0;
@@ -1151,10 +1216,10 @@
           <button class="nav-link active" data-nav="chat">
             <i data-lucide="messages-square" width="15" height="15"></i> Chat
           </button>
-          <button class="nav-link" data-nav="discover">
-            <i data-lucide="sparkles" width="15" height="15"></i> Discover
-            <span class="nav-count">New</span>
-          </button>
+          <a href="/admin" target="_blank" class="nav-link" style="text-decoration: none; color: inherit;">
+            <i data-lucide="database" width="15" height="15"></i> Database Studio
+            <span class="nav-count" style="background:#eaf3e6; color:#254d20; padding:2px 6px; border-radius:4px; font-weight:700;">Admin</span>
+          </a>
           <button class="nav-link" data-nav="library">
             <i data-lucide="bookmark" width="15" height="15"></i> Saved prompts
           </button>
@@ -1174,15 +1239,16 @@
             Explore the full catchattoolkit for your next big question.
           </p>
         </div>
-        <div class="profile">
-          <div class="avatar">B</div>
-          <div>
-            <div class="profile-name">Bharath</div>
-            <div class="profile-plan">Personal workspace</div>
+        <div class="profile" id="sidebarProfile" style="cursor: pointer; user-select: none;" title="Account & Database Settings">
+          <div class="avatar" id="sidebarAvatar">G</div>
+          <div style="min-width: 0; flex: 1;">
+            <div class="profile-name" id="sidebarUsername" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Guest Mode</div>
+            <div class="profile-plan" id="sidebarEmail" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Sign in to save chats</div>
           </div>
           <i
             class="profile-more"
-            data-lucide="ellipsis"
+            id="sidebarMoreIcon"
+            data-lucide="log-in"
             width="17"
             height="17"
           ></i>
@@ -1263,6 +1329,14 @@
                 </button>
               </div>
             </div>
+            <button class="auth-button" id="authButton" title="Sign In or View Account">
+              <i data-lucide="user" width="14" height="14" id="authButtonIcon"></i>
+              <span id="authButtonLabel">Sign In</span>
+            </button>
+            <a href="/admin" target="_blank" class="api-key-button" title="Open Database Admin Studio (phpMyAdmin style)" style="text-decoration: none; color: inherit;">
+              <i data-lucide="database" width="14" height="14"></i>
+              <span>DB Studio</span>
+            </a>
             <button class="api-key-button" id="apiKeyButton" title="Configure Gemini API Key">
               <i data-lucide="key" width="14" height="14"></i>
               <span id="apiKeyButtonLabel">API Key</span>
@@ -1419,6 +1493,85 @@
     </div>
     <div class="toast" id="toast" role="status"></div>
 
+    <!-- Authentication Modal (Sign In / Sign Up / Account Profile) -->
+    <div class="modal-overlay" id="authModal" hidden>
+      <div class="modal-card" style="max-width: 420px;">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <div class="modal-icon" style="background: #eef2e6; color: #2e4a23;">
+              <i data-lucide="user" width="18" height="18" id="authModalIcon"></i>
+            </div>
+            <div>
+              <h3 class="modal-title" id="authModalTitle">Account</h3>
+              <p class="modal-subtitle" id="authModalSubtitle">Sign in to sync conversations to MySQL</p>
+            </div>
+          </div>
+          <button class="modal-close" id="closeAuthModal" aria-label="Close dialog">
+            <i data-lucide="x" width="16" height="16"></i>
+          </button>
+        </div>
+
+        <!-- Tab switcher (Sign In vs Sign Up) -->
+        <div id="authTabs" style="display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 1px solid var(--line); padding-bottom: 8px;">
+          <button type="button" id="tabSignInBtn" style="border: 0; background: transparent; font-size: 13px; font-weight: 700; padding: 6px 10px; cursor: pointer; color: var(--ink); border-bottom: 2px solid var(--green); border-radius: 0;">Sign In</button>
+          <button type="button" id="tabSignUpBtn" style="border: 0; background: transparent; font-size: 13px; font-weight: 500; padding: 6px 10px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; border-radius: 0;">Create Account</button>
+        </div>
+
+        <!-- Form: Sign In -->
+        <div id="signInSection" class="modal-body" style="margin-bottom: 16px;">
+          <div id="signInAlert" style="display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.4; background: #fdf2f0; border: 1px solid #f2cfca; color: #a12f20;"></div>
+          <label class="modal-label" for="loginUsername">Username or Email</label>
+          <input type="text" id="loginUsername" class="modal-input" placeholder="e.g. bharath_dev" autocomplete="username" style="margin-bottom: 12px;" />
+          <label class="modal-label" for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" class="modal-input" placeholder="••••••••" autocomplete="current-password" />
+          <p class="modal-help" style="margin-top: 10px;">
+            Sign in to access your chat history stored permanently in <strong>catchat_db</strong>.
+          </p>
+        </div>
+
+        <!-- Form: Sign Up -->
+        <div id="signUpSection" class="modal-body" style="display: none; margin-bottom: 16px;">
+          <div id="signUpAlert" style="display: none; margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; font-size: 12px; line-height: 1.4; background: #fdf2f0; border: 1px solid #f2cfca; color: #a12f20;"></div>
+          <label class="modal-label" for="signupUsername">Username</label>
+          <input type="text" id="signupUsername" class="modal-input" placeholder="Letters, numbers, underscores" autocomplete="username" style="margin-bottom: 12px;" />
+          <label class="modal-label" for="signupEmail">Email Address</label>
+          <input type="email" id="signupEmail" class="modal-input" placeholder="you@example.com" autocomplete="email" style="margin-bottom: 12px;" />
+          <label class="modal-label" for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" class="modal-input" placeholder="At least 6 characters" autocomplete="new-password" />
+          <p class="modal-help" style="margin-top: 10px;">
+            Your account credentials and chats will be stored securely in the MySQL database.
+          </p>
+        </div>
+
+        <!-- Profile Logged In View -->
+        <div id="loggedInSection" class="modal-body" style="display: none; margin-bottom: 16px;">
+          <div style="background: #f7f9f5; border: 1px solid #e2e8dc; border-radius: 10px; padding: 14px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+              <div class="avatar" id="modalUserAvatar" style="width: 40px; height: 40px; font-size: 15px;">B</div>
+              <div>
+                <div style="font-weight: 700; font-size: 15px; color: #222a20;" id="modalUsername">Username</div>
+                <div style="font-size: 12px; color: #737c70;" id="modalUserEmail">email@example.com</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 7px; font-size: 12px; color: #2b5526; background: #eaf3e6; padding: 8px 12px; border-radius: 7px; font-weight: 500;">
+              <i data-lucide="database" width="14" height="14"></i>
+              <span>All chats stored in MySQL (catchat_db)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="modal-footer" id="authFooter">
+          <button class="modal-btn secondary" id="cancelAuthModalBtn">Cancel</button>
+          <button class="modal-btn primary" id="submitAuthBtn">Sign In</button>
+        </div>
+        <div class="modal-footer" id="loggedInFooter" style="display: none;">
+          <button class="modal-btn secondary" id="closeLoggedInModalBtn">Close</button>
+          <button class="modal-btn" id="logoutBtn" style="border: 1px solid #e5c3bd; background: #fdf2f0; color: #b5382b; font-weight: 600;">Sign Out</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Gemini API Key Modal -->
     <div class="modal-overlay" id="apiKeyModal" hidden>
       <div class="modal-card">
@@ -1476,6 +1629,62 @@
       let activeSession = null;
       let toastTimer;
 
+      // Auth State & Configuration
+      let currentUser = null;
+      let activeAuthTab = "signin"; // "signin" | "signup"
+      const AUTH_TOKEN_KEY = "catchat_auth_token";
+      const AUTH_USER_KEY = "catchat_auth_user";
+
+      function getAuthToken() {
+        return localStorage.getItem(AUTH_TOKEN_KEY) || "";
+      }
+
+      function setAuthSession(user, token) {
+        if (user && token) {
+          currentUser = user;
+          localStorage.setItem(AUTH_TOKEN_KEY, token);
+          localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+        } else {
+          currentUser = null;
+          localStorage.removeItem(AUTH_TOKEN_KEY);
+          localStorage.removeItem(AUTH_USER_KEY);
+        }
+        updateAuthUI();
+      }
+
+      function updateAuthUI() {
+        const authBtn = document.getElementById("authButton");
+        const authLabel = document.getElementById("authButtonLabel");
+        const authIcon = document.getElementById("authButtonIcon");
+
+        const sidebarAvatar = document.getElementById("sidebarAvatar");
+        const sidebarUsername = document.getElementById("sidebarUsername");
+        const sidebarEmail = document.getElementById("sidebarEmail");
+        const sidebarMoreIcon = document.getElementById("sidebarMoreIcon");
+
+        if (currentUser) {
+          if (authBtn) authBtn.classList.add("logged-in");
+          if (authLabel) authLabel.textContent = currentUser.username;
+          if (authIcon) authIcon.setAttribute("data-lucide", "user-check");
+
+          const initial = (currentUser.username || "U").charAt(0).toUpperCase();
+          if (sidebarAvatar) sidebarAvatar.textContent = initial;
+          if (sidebarUsername) sidebarUsername.textContent = currentUser.username;
+          if (sidebarEmail) sidebarEmail.textContent = currentUser.email || "MySQL sync active";
+          if (sidebarMoreIcon) sidebarMoreIcon.setAttribute("data-lucide", "log-out");
+        } else {
+          if (authBtn) authBtn.classList.remove("logged-in");
+          if (authLabel) authLabel.textContent = "Sign In";
+          if (authIcon) authIcon.setAttribute("data-lucide", "user");
+
+          if (sidebarAvatar) sidebarAvatar.textContent = "G";
+          if (sidebarUsername) sidebarUsername.textContent = "Guest Mode";
+          if (sidebarEmail) sidebarEmail.textContent = "Sign in to save chats";
+          if (sidebarMoreIcon) sidebarMoreIcon.setAttribute("data-lucide", "log-in");
+        }
+        icons();
+      }
+
       // Gemini State & Configuration
       let selectedModel = "gemini-3.5-flash";
       let selectedModelDisplay = "Gemini 3.5 Flash";
@@ -1496,13 +1705,18 @@
       }
 
       async function setApiKey(key) {
+        const token = getAuthToken();
+        const headers = {
+          "Content-Type": "application/json",
+          "x-client-id": getClientId(),
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        };
         if (key && key.trim()) {
           localStorage.setItem(API_KEY_STORAGE, key.trim());
-          // Sync to MySQL database via backend
           try {
             await fetch("/api/key", {
               method: "POST",
-              headers: { "Content-Type": "application/json", "x-client-id": getClientId() },
+              headers,
               body: JSON.stringify({ apiKey: key.trim() })
             });
           } catch {}
@@ -1511,7 +1725,7 @@
           try {
             await fetch("/api/key", {
               method: "DELETE",
-              headers: { "x-client-id": getClientId() }
+              headers
             });
           } catch {}
         }
@@ -1536,9 +1750,12 @@
       // Check MySQL database on startup
       async function syncKeyFromDb() {
         try {
-          const res = await fetch("/api/key", {
-            headers: { "x-client-id": getClientId() }
-          });
+          const token = getAuthToken();
+          const headers = {
+            "x-client-id": getClientId(),
+            ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          };
+          const res = await fetch("/api/key", { headers });
           const data = await res.json();
           const btn = document.getElementById("apiKeyButton");
           const label = document.getElementById("apiKeyButtonLabel");
@@ -1561,7 +1778,7 @@
         } catch {}
       }
 
-      // Modal Elements & Handlers
+      // API Key Modal Elements & Handlers
       const apiKeyModal = document.getElementById("apiKeyModal");
       const apiKeyInput = document.getElementById("apiKeyInput");
       const apiKeyButton = document.getElementById("apiKeyButton");
@@ -1606,9 +1823,303 @@
         });
       }
 
-      // Initialize API key status
+      // Authentication Modal Elements & Handlers
+      const authModal = document.getElementById("authModal");
+      const closeAuthModal = document.getElementById("closeAuthModal");
+      const cancelAuthModalBtn = document.getElementById("cancelAuthModalBtn");
+      const submitAuthBtn = document.getElementById("submitAuthBtn");
+      const tabSignInBtn = document.getElementById("tabSignInBtn");
+      const tabSignUpBtn = document.getElementById("tabSignUpBtn");
+      const authTabs = document.getElementById("authTabs");
+      const signInSection = document.getElementById("signInSection");
+      const signUpSection = document.getElementById("signUpSection");
+      const loggedInSection = document.getElementById("loggedInSection");
+      const authFooter = document.getElementById("authFooter");
+      const loggedInFooter = document.getElementById("loggedInFooter");
+      const logoutBtn = document.getElementById("logoutBtn");
+      const closeLoggedInModalBtn = document.getElementById("closeLoggedInModalBtn");
+
+      function openAuthModal(initialTab = "signin") {
+        if (currentUser) {
+          document.getElementById("authModalTitle").textContent = "Account Profile";
+          document.getElementById("authModalSubtitle").textContent = "Signed in and saving to MySQL";
+          authTabs.style.display = "none";
+          signInSection.style.display = "none";
+          signUpSection.style.display = "none";
+          loggedInSection.style.display = "block";
+          authFooter.style.display = "none";
+          loggedInFooter.style.display = "flex";
+
+          document.getElementById("modalUsername").textContent = currentUser.username;
+          document.getElementById("modalUserEmail").textContent = currentUser.email || "";
+          document.getElementById("modalUserAvatar").textContent = (currentUser.username || "U").charAt(0).toUpperCase();
+        } else {
+          document.getElementById("authModalTitle").textContent = "Welcome to catchat";
+          document.getElementById("authModalSubtitle").textContent = "Sign in to store conversations in MySQL";
+          authTabs.style.display = "flex";
+          loggedInSection.style.display = "none";
+          loggedInFooter.style.display = "none";
+          authFooter.style.display = "flex";
+          switchAuthTab(initialTab);
+        }
+        authModal.hidden = false;
+        icons();
+      }
+
+      function closeAuthModalDialog() {
+        authModal.hidden = true;
+      }
+
+      function switchAuthTab(tab) {
+        activeAuthTab = tab;
+        const signInAlert = document.getElementById("signInAlert");
+        const signUpAlert = document.getElementById("signUpAlert");
+        if (signInAlert) signInAlert.style.display = "none";
+        if (signUpAlert) signUpAlert.style.display = "none";
+
+        if (tab === "signin") {
+          tabSignInBtn.style.fontWeight = "700";
+          tabSignInBtn.style.color = "var(--ink)";
+          tabSignInBtn.style.borderBottomColor = "var(--green)";
+          tabSignUpBtn.style.fontWeight = "500";
+          tabSignUpBtn.style.color = "var(--muted)";
+          tabSignUpBtn.style.borderBottomColor = "transparent";
+          signInSection.style.display = "block";
+          signUpSection.style.display = "none";
+          submitAuthBtn.textContent = "Sign In";
+          document.getElementById("loginUsername")?.focus();
+        } else {
+          tabSignUpBtn.style.fontWeight = "700";
+          tabSignUpBtn.style.color = "var(--ink)";
+          tabSignUpBtn.style.borderBottomColor = "var(--green)";
+          tabSignInBtn.style.fontWeight = "500";
+          tabSignInBtn.style.color = "var(--muted)";
+          tabSignInBtn.style.borderBottomColor = "transparent";
+          signInSection.style.display = "none";
+          signUpSection.style.display = "block";
+          submitAuthBtn.textContent = "Create Account";
+          document.getElementById("signupUsername")?.focus();
+        }
+      }
+
+      tabSignInBtn?.addEventListener("click", () => switchAuthTab("signin"));
+      tabSignUpBtn?.addEventListener("click", () => switchAuthTab("signup"));
+      document.getElementById("authButton")?.addEventListener("click", () => openAuthModal());
+      document.getElementById("sidebarProfile")?.addEventListener("click", () => openAuthModal());
+      closeAuthModal?.addEventListener("click", closeAuthModalDialog);
+      cancelAuthModalBtn?.addEventListener("click", closeAuthModalDialog);
+      closeLoggedInModalBtn?.addEventListener("click", closeAuthModalDialog);
+      authModal?.addEventListener("click", (e) => {
+        if (e.target === authModal) closeAuthModalDialog();
+      });
+
+      submitAuthBtn?.addEventListener("click", async () => {
+        if (activeAuthTab === "signin") {
+          const login = document.getElementById("loginUsername").value.trim();
+          const password = document.getElementById("loginPassword").value;
+          const alertEl = document.getElementById("signInAlert");
+          if (!login || !password) {
+            alertEl.textContent = "Please enter username/email and password.";
+            alertEl.style.display = "block";
+            return;
+          }
+          submitAuthBtn.disabled = true;
+          submitAuthBtn.textContent = "Signing In...";
+          try {
+            const res = await fetch("/api/auth/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ login, password })
+            });
+            const data = await res.json();
+            if (res.ok && data.token && data.user) {
+              setAuthSession(data.user, data.token);
+              showToast(`Welcome back, ${data.user.username}!`);
+              closeAuthModalDialog();
+              await loadSessionsFromDb();
+              await syncKeyFromDb();
+            } else {
+              alertEl.textContent = data.error?.message || "Invalid credentials.";
+              alertEl.style.display = "block";
+            }
+          } catch (err) {
+            alertEl.textContent = "Could not connect to server.";
+            alertEl.style.display = "block";
+          } finally {
+            submitAuthBtn.disabled = false;
+            submitAuthBtn.textContent = "Sign In";
+          }
+        } else {
+          // Sign Up
+          const username = document.getElementById("signupUsername").value.trim();
+          const email = document.getElementById("signupEmail").value.trim();
+          const password = document.getElementById("signupPassword").value;
+          const alertEl = document.getElementById("signUpAlert");
+          if (!username || !email || !password) {
+            alertEl.textContent = "Please fill in all fields.";
+            alertEl.style.display = "block";
+            return;
+          }
+          if (password.length < 6) {
+            alertEl.textContent = "Password must be at least 6 characters.";
+            alertEl.style.display = "block";
+            return;
+          }
+          submitAuthBtn.disabled = true;
+          submitAuthBtn.textContent = "Creating Account...";
+          try {
+            const res = await fetch("/api/auth/signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, email, password })
+            });
+            const data = await res.json();
+            if (res.ok && data.token && data.user) {
+              setAuthSession(data.user, data.token);
+              showToast(`Account created! Welcome, ${data.user.username}`);
+              closeAuthModalDialog();
+              await loadSessionsFromDb();
+              await syncKeyFromDb();
+            } else {
+              alertEl.textContent = data.error?.message || "Failed to create account.";
+              alertEl.style.display = "block";
+            }
+          } catch (err) {
+            alertEl.textContent = "Could not connect to server.";
+            alertEl.style.display = "block";
+          } finally {
+            submitAuthBtn.disabled = false;
+            submitAuthBtn.textContent = "Create Account";
+          }
+        }
+      });
+
+      logoutBtn?.addEventListener("click", async () => {
+        try {
+          await fetch("/api/auth/logout", { method: "POST" });
+        } catch {}
+        setAuthSession(null, null);
+        sessions.length = 0;
+        resetChat();
+        await loadSessionsFromDb();
+        await syncKeyFromDb();
+        closeAuthModalDialog();
+        showToast("Logged out");
+      });
+
+      // Database Session Persistence Handlers
+      async function loadSessionsFromDb() {
+        try {
+          const token = getAuthToken();
+          const res = await fetch("/api/sessions", {
+            headers: {
+              "x-client-id": getClientId(),
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            }
+          });
+          const data = await res.json();
+          if (data && Array.isArray(data.sessions)) {
+            sessions.length = 0;
+            data.sessions.forEach((s) => {
+              sessions.push({
+                id: s.id,
+                title: s.title || "Untitled chat",
+                updatedAt: s.updatedAt || Date.now(),
+                messages: Array.isArray(s.messages) ? s.messages : []
+              });
+            });
+            renderHistory();
+          }
+        } catch (err) {
+          console.error("Could not load sessions from DB:", err);
+        }
+      }
+
+      async function saveActiveSessionToDb() {
+        if (!activeSession) return;
+        if (!activeSession.id) {
+          activeSession.id = "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+        }
+        activeSession.updatedAt = Date.now();
+        try {
+          const token = getAuthToken();
+          await fetch(`/api/sessions/${activeSession.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "x-client-id": getClientId(),
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              title: activeSession.title,
+              updatedAt: activeSession.updatedAt,
+              messages: activeSession.messages.map((m) => ({
+                role: m.role,
+                text: m.text || "",
+                rawText: m.rawText,
+                html: m.html
+              }))
+            })
+          });
+        } catch (err) {
+          console.error("Could not save session to MySQL:", err);
+        }
+      }
+
+      async function deleteSessionFromDb(sessionId, e) {
+        if (e) e.stopPropagation();
+        try {
+          const token = getAuthToken();
+          await fetch(`/api/sessions/${sessionId}`, {
+            method: "DELETE",
+            headers: {
+              "x-client-id": getClientId(),
+              ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            }
+          });
+        } catch (err) {
+          console.error("Delete session error:", err);
+        }
+        const idx = sessions.findIndex((s) => s.id === sessionId);
+        if (idx !== -1) sessions.splice(idx, 1);
+        if (activeSession && activeSession.id === sessionId) {
+          resetChat();
+        }
+        renderHistory();
+        showToast("Conversation deleted");
+      }
+
+      // Check current authentication on boot
+      async function initAuth() {
+        const token = getAuthToken();
+        const cachedUser = localStorage.getItem(AUTH_USER_KEY);
+        if (cachedUser) {
+          try { currentUser = JSON.parse(cachedUser); } catch {}
+        }
+        updateAuthUI();
+
+        if (token) {
+          try {
+            const res = await fetch("/api/auth/me", {
+              headers: { "Authorization": `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data && data.authenticated && data.user) {
+              currentUser = data.user;
+              localStorage.setItem(AUTH_USER_KEY, JSON.stringify(data.user));
+              updateAuthUI();
+            } else {
+              setAuthSession(null, null);
+            }
+          } catch {}
+        }
+        await loadSessionsFromDb();
+      }
+
+      // Initialize API key status & Auth state
       updateApiKeyUI();
       syncKeyFromDb();
+      initAuth();
 
       const icons = () => {
         if (window.lucide) window.lucide.createIcons();
@@ -1624,7 +2135,12 @@
       }
 
       function createSession() {
-        activeSession = { title: "New conversation", messages: [] };
+        activeSession = {
+          id: "s_" + Math.random().toString(36).slice(2, 9) + Date.now().toString(36),
+          title: "New conversation",
+          updatedAt: Date.now(),
+          messages: []
+        };
         sessions.unshift(activeSession);
         welcome.style.display = "none";
         conversation.classList.add("visible");
@@ -1635,7 +2151,7 @@
 
       function renderHistory() {
         historyList.replaceChildren();
-        const recent = sessions.slice(0, 7);
+        const recent = sessions.slice(0, 15);
         if (!recent.length) {
           const empty = document.createElement("div");
           empty.className = "history-item empty";
@@ -1644,17 +2160,26 @@
           return;
         }
         recent.forEach((session) => {
+          const row = document.createElement("div");
+          row.className = "history-item-row" + (session === activeSession ? " active" : "");
+
           const button = document.createElement("button");
-          button.className =
-            "nav-link history-item" +
-            (session === activeSession ? " active" : "");
-          button.innerHTML =
-            '<i data-lucide="message-circle" width="14" height="14"></i>';
+          button.className = "history-item-btn";
+          button.title = session.title;
+          button.innerHTML = '<i data-lucide="message-circle" width="14" height="14" style="flex:0 0 14px;"></i>';
           const title = document.createElement("span");
           title.textContent = session.title;
           button.append(title);
           button.addEventListener("click", () => openSession(session));
-          historyList.append(button);
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "history-del-btn";
+          delBtn.title = "Delete conversation";
+          delBtn.innerHTML = '<i data-lucide="trash-2" width="13" height="13"></i>';
+          delBtn.addEventListener("click", (e) => deleteSessionFromDb(session.id, e));
+
+          row.append(button, delBtn);
+          historyList.append(row);
         });
         icons();
       }
@@ -1795,11 +2320,13 @@
 
         // 1. Send through Nginx / Backend proxy with MySQL stored key
         try {
+          const token = getAuthToken();
           const res = await fetch("/api/chat", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "x-client-id": getClientId(),
+              ...(token ? { "Authorization": `Bearer ${token}` } : {}),
               ...(apiKey ? { "x-gemini-key": apiKey } : {})
             },
             body: JSON.stringify({ model: activeModel, contents })
@@ -1872,6 +2399,7 @@
           attachmentMeta: currentAttachment
         });
         addMessage("user", messageText, null, currentAttachment ? currentAttachment.dataUrl : null);
+        await saveActiveSessionToDb();
 
         input.value = "";
         input.style.height = "auto";
@@ -1905,17 +2433,21 @@
             ? ` (⚡ Auto-switched: ${replyObj.provider || replyObj.usedModel})`
             : "";
           addMessage("assistant", "", parsedHtml, null, metaBadge);
+          await saveActiveSessionToDb();
+          renderHistory();
         } catch (err) {
           typing.remove();
           if (err.message === "NO_API_KEY") {
             const promptHtml = `<p>⚠️ <strong>Gemini API Key Required</strong></p><p>To chat with <strong>${selectedModelDisplay}</strong>, please configure your API key.</p><p><button onclick="openModal()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #d4dbce;border-radius:6px;background:#fff;font-weight:600;font-size:12px;cursor:pointer;">Set Gemini API Key</button></p>`;
             activeSession.messages.push({ role: "assistant", html: promptHtml });
             addMessage("assistant", "", promptHtml);
+            await saveActiveSessionToDb();
             openModal();
           } else {
             const errorHtml = `<p style="color:#b53d35;"><strong>Error from Gemini API:</strong> ${err.message}</p><p><small>Ensure your API key is valid and has access to model <code>${selectedModel}</code>.</small></p>`;
             activeSession.messages.push({ role: "assistant", html: errorHtml });
             addMessage("assistant", "", errorHtml);
+            await saveActiveSessionToDb();
           }
         }
       }
@@ -1925,10 +2457,14 @@
         welcome.style.display = "none";
         conversation.classList.add("visible");
         conversation.replaceChildren();
-        document.getElementById("crumbTitle").textContent = session.title;
-        session.messages.forEach((message) =>
-          addMessage(message.role, message.text || "", message.html, message.attachment),
-        );
+        document.getElementById("crumbTitle").textContent = session.title || "Conversation";
+        (session.messages || []).forEach((message) => {
+          let html = message.html;
+          if (!html && message.role === "assistant" && message.text) {
+            html = window.marked ? marked.parse(message.text) : `<p>${message.text}</p>`;
+          }
+          addMessage(message.role, message.text || "", html, message.attachment);
+        });
         renderHistory();
         closeSidebar();
       }
