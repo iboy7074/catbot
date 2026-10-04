@@ -1,2 +1,7 @@
 node_modules/
 data/mysql/
+data/*.log
+data/*.pid
+data/nginx/
+data/*.sock
+okkkk.html
